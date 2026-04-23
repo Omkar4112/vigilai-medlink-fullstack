@@ -119,8 +119,11 @@ def explain(req: ExplainRequest):
     age_group = v.get("age_group", "ADULT")
 
     # ── Explanation ───────────────────────────────────────────────
+    etype = v.get("emergency_type") or "sepsis/clinical"
+    if etype == "AUTO-DETECT": etype = "sepsis"
+
     explanation = (
-        f"The AI model assessed a {req.risk_score*100:.0f}% {lvl} sepsis risk for this "
+        f"The AI model assessed a {req.risk_score*100:.0f}% {lvl} {etype.lower()} risk for this "
         f"{age_group.lower()} patient (age {age}). "
         f"Key contributing signals: HR={v.get('heart_rate')} bpm, "
         f"Temp={v.get('temperature')}°C, RR={v.get('respiratory_rate')}/min, "

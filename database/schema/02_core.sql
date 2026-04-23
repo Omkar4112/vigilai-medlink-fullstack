@@ -115,7 +115,7 @@ CREATE INDEX idx_doctors_hospital ON doctors(hospital_id);
 
 CREATE TABLE IF NOT EXISTS alerts (
     alert_id             BIGSERIAL PRIMARY KEY,
-    patient_id           INT REFERENCES patients(patient_id),
+    patient_id           INT REFERENCES patients(patient_id) ON DELETE CASCADE,
     clinic_id            VARCHAR(100) NOT NULL,
     risk_score           DECIMAL(5,4) NOT NULL CHECK (risk_score >= 0 AND risk_score <= 1),
     severity             VARCHAR(30) NOT NULL,
@@ -163,7 +163,7 @@ CREATE INDEX idx_alerts_time ON alerts(alert_timestamp DESC);
 
 CREATE TABLE IF NOT EXISTS documents (
     doc_id         SERIAL PRIMARY KEY,
-    patient_id     INT REFERENCES patients(patient_id),
+    patient_id     INT REFERENCES patients(patient_id) ON DELETE CASCADE,
     uploaded_by    UUID REFERENCES users(id),
     doc_type       VARCHAR(50),
     file_name      VARCHAR(255),
@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS documents (
 
 CREATE TABLE IF NOT EXISTS outcomes (
     outcome_id     SERIAL PRIMARY KEY,
-    alert_id       BIGINT REFERENCES alerts(alert_id),
+    alert_id       BIGINT REFERENCES alerts(alert_id) ON DELETE CASCADE,
     was_sepsis     BOOLEAN,
     final_diagnosis VARCHAR(200),
     patient_survived BOOLEAN,

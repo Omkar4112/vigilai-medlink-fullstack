@@ -39,10 +39,15 @@ public class PatientService {
         long total   = patientRepo.countByClinicId(clinicId);
         long pending = vitalRepo.countByClinicAndStatus(clinicId, "PENDING");
         long synced  = vitalRepo.countByClinicAndStatus(clinicId, "SYNCED");
+        
+        java.time.LocalDateTime todayStart = java.time.LocalDate.now().atStartOfDay();
+        long vitalsToday = vitalRepo.countVitalsSince(clinicId, todayStart);
+
         return Map.of(
                 "totalPatients", total,
                 "pendingSync",   pending,
-                "syncedCount",   synced
+                "syncedCount",   synced,
+                "vitalsToday",   vitalsToday
         );
     }
 }

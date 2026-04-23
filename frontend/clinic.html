@@ -308,6 +308,27 @@ tr:hover td{background:rgba(0,212,255,.02)}
     </div>
   </div>
 
+  <!-- Alerts section -->
+  <div id="section-alerts" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>🚨 My Alerts</h3>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Patient</th><th>Risk</th><th>Score</th><th>Type</th><th>Status</th><th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="alertTableBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px;font-family:var(--mono)">Loading alerts…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- Sync Queue section -->
   <div id="section-sync" style="display:none">
     <div class="panel">
@@ -441,6 +462,18 @@ async function submitVitals() {
     vitalsCount++;
     document.getElementById('statVitals').textContent = vitalsCount;
     showAIResult(data);
+    
+    // Update patient info card after submission
+    document.getElementById('patientCard').innerHTML = `
+      <div style="color:var(--green);margin-bottom:12px;font-weight:600">✓ Patient registered/updated</div>
+      <div style="margin-bottom:6px"><b>ID:</b> ${data.patientId}</div>
+      <div style="margin-bottom:6px"><b>Name:</b> ${payload.fullName || '—'}</div>
+      <div style="margin-bottom:6px"><b>Age:</b> ${payload.age} (${data.ageGroup || 'ADULT'})</div>
+      <div style="margin-bottom:6px"><b>Gender:</b> ${payload.gender || '—'}</div>
+    `;
+    
+    // Refresh stats to update total patients count
+    loadDashboardStats();
 
   } catch (e) {
     // Offline — queue it
@@ -598,20 +631,25 @@ function renderDemoPatients() {
 }
 
 // Init stats
-document.getElementById('statPatients').textContent = '—';
+document.getElementById('statPatients').textContent = '0';
 document.getElementById('statVitals').textContent   = '0';
-document.getElementById('statAlerts').textContent   = '—';
+document.getElementById('statAlerts').textContent   = '0';
 updateQueueBadge();
 
-// Load dashboard stats
-(async()=>{
+async function loadDashboardStats() {
   try {
     const res  = await authFetch(`${API}/api/clinic/patients/dashboard?clinicId=${encodeURIComponent(clinicId)}`);
     const data = await res.json();
-    document.getElementById('statPatients').textContent = data.totalPatients||'—';
-    document.getElementById('statSync').textContent     = data.pendingSync||offlineQueue.length;
+    document.getElementById('statPatients').textContent = data.totalPatients !== undefined ? data.totalPatients : '0';
+    document.getElementById('statVitals').textContent   = data.vitalsToday !== undefined ? data.vitalsToday : '0';
+    document.getElementById('statSync').textContent     = data.pendingSync !== undefined ? data.pendingSync : offlineQueue.length;
   } catch {}
-})();
+}
+
+// Load dashboard stats
+loadDashboardStats();
+loadAlerts(); // Populate active alerts count
+setInterval(loadDashboardStats, 30000); // Refresh every 30s
 </script>
 </body>
 </html>

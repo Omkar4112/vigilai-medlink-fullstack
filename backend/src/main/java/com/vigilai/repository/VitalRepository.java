@@ -17,4 +17,7 @@ public interface VitalRepository extends JpaRepository<Vital, Long> {
 
     @Query("SELECT COUNT(v) FROM Vital v WHERE v.clinicId = :cid AND v.syncStatus = :status")
     long countByClinicAndStatus(@Param("cid") String clinicId, @Param("status") String status);
+
+    @Query("SELECT COUNT(v) FROM Vital v WHERE v.clinicId = :cid AND v.vitalTimestamp >= :since")
+    long countVitalsSince(@Param("cid") String clinicId, @Param("since") java.time.LocalDateTime since);
 }
