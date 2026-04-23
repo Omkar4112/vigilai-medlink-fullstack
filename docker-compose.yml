@@ -1,0 +1,72 @@
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vigilai-db
+    environment:
+      POSTGRES_DB:       vigilai
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: OMKAR@111
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema/01_users.sql:/docker-entrypoint-initdb.d/01_users.sql
+      - ./database/schema/02_core.sql:/docker-entrypoint-initdb.d/02_core.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ai-service:
+    build: ./ai-service
+    container_name: vigilai-ai
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: vigilai-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL:      jdbc:postgresql://postgres:5432/vigilai
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: OMKAR@111
+      AI_SERVICE_URL:             http://ai-service:8000/predict
+      LLM_SERVICE_URL:            http://ai-service:8000/explain
+      JWT_SECRET:                 vigilai_prod_secret_key_min_32_chars_long_!@#
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    image: nginx:alpine
+    container_name: vigilai-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

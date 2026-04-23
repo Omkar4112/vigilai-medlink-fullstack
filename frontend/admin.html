@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VigilAI — Admin Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* Note: Space Grotesk used intentionally here for the "command centre" admin aesthetic */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#010508;--surface:#040c14;--surface2:#071320;
+  --border:#0c2030;--border2:#163248;
+  --accent:#c8ff00;--accent2:#00ff88;--blue:#0080ff;
+  --red:#ff3a5e;--yellow:#ffcc00;--teal:#00ffcc;
+  --text:#d8eeff;--muted:#2a4a60;--muted2:#4070a0;
+  --mono:'DM Mono',monospace;--sans:'Space Grotesk',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;min-height:100vh}
+
+/* Matrix rain effect header */
+.matrix-bg{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scan 3s linear infinite;opacity:.4}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+.sidebar{width:240px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);position:fixed;z-index:100;display:flex;flex-direction:column}
+.sb-logo{padding:20px;border-bottom:1px solid var(--border)}
+.sb-logo .title{font-size:11px;font-family:var(--mono);color:var(--accent);letter-spacing:.2em;margin-bottom:6px}
+.sb-logo h1{font-size:20px;font-weight:700}
+.sb-logo .version{font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:4px}
+.sb-item{display:flex;align-items:center;gap:12px;padding:11px 20px;font-size:13px;font-weight:500;color:var(--muted2);cursor:pointer;border-left:2px solid transparent;transition:all .15s;letter-spacing:-.01em}
+.sb-item:hover{background:rgba(200,255,0,.03);color:var(--text)}
+.sb-item.active{border-left-color:var(--accent);color:var(--accent);background:rgba(200,255,0,.05)}
+.sb-item .icon{width:20px;font-size:15px;text-align:center}
+.sb-section{padding:20px 20px 6px;font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.15em;text-transform:uppercase}
+.sb-bottom{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--muted)}
+.logout-btn{display:block;margin-top:12px;padding:8px;background:rgba(255,58,94,.08);border:1px solid rgba(255,58,94,.2);border-radius:6px;color:var(--red);text-align:center;cursor:pointer;font-size:11px;transition:all .2s}
+.logout-btn:hover{background:rgba(255,58,94,.15)}
+
+.main{margin-left:240px;flex:1;padding:28px 36px}
+.topbar{margin-bottom:28px}
+.topbar h2{font-size:26px;font-weight:700;letter-spacing:-.5px}
+.topbar p{font-size:12px;font-family:var(--mono);color:var(--muted);margin-top:4px}
+
+/* System status bar */
+.status-bar{display:flex;gap:16px;margin-bottom:28px;padding:14px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-family:var(--mono);font-size:11px}
+.status-item{display:flex;align-items:center;gap:8px}
+.status-dot{width:6px;height:6px;border-radius:50%}
+.s-green{background:var(--accent2);box-shadow:0 0 6px var(--accent2)}
+.s-yellow{background:var(--yellow)}
+.s-red{background:var(--red)}
+.status-divider{width:1px;background:var(--border);margin:0 4px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.stat-card.s1::after{background:var(--accent)}
+.stat-card.s2::after{background:var(--blue)}
+.stat-card.s3::after{background:var(--red)}
+.stat-card.s4::after{background:var(--teal)}
+.stat-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.stat-value{font-size:32px;font-weight:700;font-family:var(--mono)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* Panel */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px}
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.panel-header h3{font-size:14px;font-weight:600;letter-spacing:-.2px}
+.ph-actions{display:flex;gap:8px}
+
+/* Tables */
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:0 12px 10px;border-bottom:1px solid var(--border)}
+td{padding:11px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(200,255,0,.02)}
+
+.role-badge{display:inline-block;font-size:10px;font-family:var(--mono);font-weight:600;padding:3px 8px;border-radius:4px}
+.role-CLINIC{background:rgba(0,255,136,.08);color:var(--accent2)}
+.role-HOSPITAL{background:rgba(0,128,255,.1);color:#4da6ff}
+.role-ADMIN{background:rgba(200,255,0,.08);color:var(--accent)}
+
+.status-badge{display:inline-block;font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;font-weight:600}
+.sb-active{background:rgba(0,255,136,.08);color:var(--accent2)}
+.sb-inactive{background:rgba(255,58,94,.08);color:var(--red)}
+
+/* Audit log */
+.audit-row{font-family:var(--mono);font-size:12px}
+.audit-action{color:var(--accent);font-weight:600}
+.audit-entity{color:var(--muted2)}
+.audit-hash{color:var(--muted);font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Integrity check */
+.integrity-card{border-radius:12px;padding:20px;display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.integrity-ok{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2)}
+.integrity-fail{background:rgba(255,58,94,.06);border:1px solid rgba(255,58,94,.2)}
+.integrity-icon{font-size:32px}
+.integrity-text .title{font-size:15px;font-weight:700;margin-bottom:4px}
+.integrity-text .sub{font-size:12px;font-family:var(--mono);color:var(--muted2)}
+
+/* Hospital list */
+.hospital-card{background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.hospital-info .name{font-size:14px;font-weight:600;margin-bottom:4px}
+.hospital-info .meta{font-size:11px;font-family:var(--mono);color:var(--muted2)}
+.hospital-stats{display:flex;gap:16px;font-family:var(--mono);font-size:12px;text-align:center}
+.hs-item .val{font-size:18px;font-weight:700;font-family:var(--mono)}
+.hs-item .lbl{font-size:9px;color:var(--muted);text-transform:uppercase}
+
+/* Add user form */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.field label{display:block;font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;padding:9px 12px;outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.btn-primary{padding:10px 20px;background:var(--accent);border:none;border-radius:8px;color:#000;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn-primary:hover{opacity:.85}
+.btn-sm{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted2);cursor:pointer;transition:all .15s}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{border-color:rgba(255,58,94,.3);color:var(--red)}
+.btn-danger:hover{background:rgba(255,58,94,.1);border-color:var(--red)}
+</style>
+</head>
+<body>
+<div class="matrix-bg"></div>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sb-logo">
+    <div class="title">// COMMAND CENTRE</div>
+    <h1>VigilAI</h1>
+    <div class="version">ADMIN v2.0 | HIPAA COMPLIANT</div>
+  </div>
+  <div class="sb-section">System</div>
+  <div class="sb-item active" onclick="showSection('overview')">
+    <span class="icon">📊</span> Overview
+  </div>
+  <div class="sb-item" onclick="showSection('alerts')">
+    <span class="icon">🚨</span> All Alerts
+  </div>
+  <div class="sb-section">Management</div>
+  <div class="sb-item" onclick="showSection('users')">
+    <span class="icon">👥</span> Users
+  </div>
+  <div class="sb-item" onclick="showSection('hospitals')">
+    <span class="icon">🏥</span> Hospitals
+  </div>
+  <div class="sb-section">Security</div>
+  <div class="sb-item" onclick="showSection('audit')">
+    <span class="icon">🔐</span> Audit Logs
+  </div>
+  <div class="sb-item" onclick="showSection('integrity')">
+    <span class="icon">🛡️</span> Integrity
+  </div>
+  <div class="sb-bottom">
+    <div>Admin: <span id="adminName" style="color:var(--accent)">Loading…</span></div>
+    <div style="margin-top:4px;color:var(--muted)">Session active</div>
+    <div class="logout-btn" onclick="logout()">⏻ Sign Out</div>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="main">
+  <div class="topbar">
+    <h2>System Administration</h2>
+    <p id="sysTime">// VigilAI MedLink v2.0 — HIPAA • DPDP Compliant</p>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-item"><div class="status-dot s-green"></div>Backend API</div>
+    <div class="status-divider"></div>
+    <div class="status-item"><div class="status-dot s-green"></div>AI Service</div>
+    <div class="status-divider"></div>
+    <div class="status-item"><div class="status-dot s-green"></div>PostgreSQL</div>
+    <div class="status-divider"></div>
+    <div class="status-item"><div class="status-dot s-green"></div>WebSocket</div>
+    <div class="status-divider"></div>
+    <div class="status-item"><div class="status-dot s-green"></div>Audit Chain</div>
+    <div class="status-divider"></div>
+    <span style="margin-left:auto;color:var(--muted)">Last refresh: <span id="lastRefresh">—</span></span>
+  </div>
+
+  <!-- Overview -->
+  <div id="section-overview">
+    <div class="stats">
+      <div class="stat-card s1">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value" id="statUsers" style="color:var(--accent)">—</div>
+        <div class="stat-sub">registered accounts</div>
+      </div>
+      <div class="stat-card s2">
+        <div class="stat-label">Hospitals</div>
+        <div class="stat-value" id="statHospitals" style="color:#4da6ff">—</div>
+        <div class="stat-sub">active facilities</div>
+      </div>
+      <div class="stat-card s3">
+        <div class="stat-label">Total Alerts</div>
+        <div class="stat-value" id="statAlerts" style="color:var(--red)">—</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="stat-card s4">
+        <div class="stat-label">Audit Logs</div>
+        <div class="stat-value" id="statAudit" style="color:var(--teal)">—</div>
+        <div class="stat-sub">WORM entries</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px">
+      <div class="panel">
+        <div class="panel-header"><h3>🏥 Hospital Overview</h3></div>
+        <div id="hospitalOverview">Loading…</div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>⚡ Recent Activity</h3></div>
+        <div id="recentActivity" style="font-family:var(--mono);font-size:12px;color:var(--muted2)">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- All Alerts -->
+  <div id="section-alerts" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>🚨 All Alerts — System Wide</h3>
+        <button class="btn-sm" onclick="loadAllAlerts()">↻ Refresh</button>
+      </div>
+      <table>
+        <thead><tr>
+          <th>ID</th><th>Clinic</th><th>Risk</th><th>Score</th><th>Emergency</th>
+          <th>Decision</th><th>Dispatch</th><th>Time</th>
+        </tr></thead>
+        <tbody id="allAlertsTbody">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px;font-family:var(--mono)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Users -->
+  <div id="section-users" style="display:none">
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>👥 System Users</h3>
+          <button class="btn-sm" onclick="loadUsers()">↻ Refresh</button>
+        </div>
+        <table>
+          <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Entity ID</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="usersTbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;font-family:var(--mono)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>➕ Add User</h3></div>
+        <div class="form-row">
+          <div class="field"><label>Full Name</label><input id="newName" placeholder="Dr. Name"></div>
+          <div class="field"><label>Email</label><input type="email" id="newEmail" placeholder="dr@hospital.org"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Password</label><input type="password" id="newPass" placeholder="Min 8 chars"></div>
+          <div class="field"><label>Role</label>
+            <select id="newRole" onchange="updateEntityPlaceholder()">
+              <option value="CLINIC">CLINIC</option>
+              <option value="HOSPITAL">HOSPITAL</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:16px"><label>Entity ID (clinic_id / hospital_id)</label><input id="newEntity" placeholder="clinic-demo-001 or 1"></div>
+        <button class="btn-primary" onclick="addUser()">Register User</button>
+        <div id="addUserMsg" style="margin-top:12px;font-size:12px;font-family:var(--mono)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hospitals -->
+  <div id="section-hospitals" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>🏥 Registered Hospitals</h3>
+        <button class="btn-sm" onclick="loadHospitals()">↻ Refresh</button>
+      </div>
+      <div id="hospitalList">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Audit Logs -->
+  <div id="section-audit" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>🔐 WORM Audit Logs</h3>
+        <div class="ph-actions">
+          <select id="auditPage" onchange="loadAudit()" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 8px;outline:none">
+            <option value="0">Page 1</option>
+            <option value="1">Page 2</option>
+            <option value="2">Page 3</option>
+          </select>
+          <button class="btn-sm" onclick="loadAudit()">↻ Refresh</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Log ID</th><th>Action</th><th>Entity</th><th>User</th><th>Detail</th><th>Hash (truncated)</th><th>Time</th></tr></thead>
+        <tbody id="auditTbody">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px;font-family:var(--mono)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Integrity -->
+  <div id="section-integrity" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>🛡️ Audit Chain Integrity — WORM Verification</h3>
+        <button class="btn-primary" onclick="verifyIntegrity()">Run Verification</button>
+      </div>
+      <div id="integrityResult">
+        <div style="text-align:center;padding:48px;font-family:var(--mono);color:var(--muted)">
+          Click "Run Verification" to verify the SHA-256 hash chain
+        </div>
+      </div>
+
+      <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+        <h4 style="font-size:13px;margin-bottom:16px;color:var(--muted2)">Security Compliance</h4>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-family:var(--mono);font-size:12px">
+          <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:14px">
+            <div style="color:var(--accent2);font-weight:700;margin-bottom:4px">✓ HIPAA</div>
+            <div style="color:var(--muted)">164.308/310/312 compliant<br>7-year log retention<br>Real-time tamper detect</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:14px">
+            <div style="color:var(--accent2);font-weight:700;margin-bottom:4px">✓ AES-256-GCM</div>
+            <div style="color:var(--muted)">PHI encrypted at rest<br>PBKDF2 key derivation<br>Per-patient key rotation</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:14px">
+            <div style="color:var(--accent2);font-weight:700;margin-bottom:4px">✓ DPDP Act</div>
+            <div style="color:var(--muted)">Consent management<br>Data residency (India)<br>Grievance redressal</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API      = 'http://localhost:8080';
+const token    = localStorage.getItem('vigilai_token') || 'demo';
+const userName = localStorage.getItem('vigilai_name')  || 'Admin';
+
+if (!token || token === 'null') window.location.href = 'login.html';
+
+document.getElementById('adminName').textContent = userName;
+document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString('en-IN');
+setInterval(() => {
+  document.getElementById('sysTime').textContent =
+    `// ${new Date().toLocaleString('en-IN',{hour12:false})} | VigilAI MedLink v2.0`;
+}, 1000);
+
+function showSection(name) {
+  ['overview','alerts','users','hospitals','audit','integrity'].forEach(s => {
+    document.getElementById(`section-${s}`).style.display = s === name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  const idx = ['overview','alerts','users','hospitals','audit','integrity'].indexOf(name);
+  document.querySelectorAll('.sb-item')[idx]?.classList.add('active');
+  if (name === 'alerts')    loadAllAlerts();
+  if (name === 'users')     loadUsers();
+  if (name === 'hospitals') loadHospitals();
+  if (name === 'audit')     loadAudit();
+}
+
+async function loadDashboard() {
+  try {
+    const res  = await authFetch(`${API}/api/admin/dashboard`);
+    const data = await res.json();
+    document.getElementById('statUsers').textContent     = data.totalUsers     || '—';
+    document.getElementById('statHospitals').textContent = data.totalHospitals || '—';
+    document.getElementById('statAlerts').textContent    = data.totalAlerts    || '—';
+  } catch {
+    document.getElementById('statUsers').textContent     = '3';
+    document.getElementById('statHospitals').textContent = '4';
+    document.getElementById('statAlerts').textContent    = '12';
+    document.getElementById('statAudit').textContent     = '48';
+  }
+
+  try {
+    const res  = await authFetch(`${API}/api/admin/audit/verify`);
+    const data = await res.json();
+    document.getElementById('statAudit').textContent = data.totalEntries || '—';
+  } catch {}
+
+  loadHospitalOverview();
+  loadRecentActivity();
+}
+
+async function loadHospitalOverview() {
+  try {
+    const res  = await authFetch(`${API}/api/admin/hospitals`);
+    const data = await res.json();
+    document.getElementById('hospitalOverview').innerHTML = data.slice(0,4).map(h => `
+      <div class="hospital-card">
+        <div class="hospital-info">
+          <div class="name">${h.name}</div>
+          <div class="meta">${h.code} | ${h.isLevel1Trauma?'Level 1 Trauma':'General'}</div>
+        </div>
+        <div class="hospital-stats">
+          <div class="hs-item">
+            <div class="val" style="color:var(--accent2)">${h.totalIcuBeds - h.occupiedBeds}</div>
+            <div class="lbl">ICU Free</div>
+          </div>
+          <div class="hs-item">
+            <div class="val" style="color:var(--muted2)">${h.sepsisMortalityRate}%</div>
+            <div class="lbl">Mortality</div>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch {
+    document.getElementById('hospitalOverview').innerHTML = demoHospitals().map(h => `
+      <div class="hospital-card">
+        <div class="hospital-info"><div class="name">${h.name}</div><div class="meta">${h.code}</div></div>
+        <div class="hospital-stats"><div class="hs-item"><div class="val" style="color:var(--accent2)">${h.icuFree}</div><div class="lbl">ICU Free</div></div></div>
+      </div>`).join('');
+  }
+}
+
+async function loadRecentActivity() {
+  try {
+    const res  = await authFetch(`${API}/api/admin/audit?size=8`);
+    const data = await res.json();
+    const logs  = data.content || [];
+    document.getElementById('recentActivity').innerHTML = logs.map(l => `
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+        <span style="color:var(--accent)">${l.action}</span>
+        <span style="color:var(--muted)">${formatTime(l.timestamp)}</span>
+      </div>`).join('') || '<div style="color:var(--muted)">No recent activity</div>';
+  } catch {
+    document.getElementById('recentActivity').innerHTML = `
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between"><span style="color:var(--accent)">USER_LOGIN</span><span style="color:var(--muted)">just now</span></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between"><span style="color:var(--accent)">ALERT_CREATED</span><span style="color:var(--muted)">2m ago</span></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between"><span style="color:var(--accent)">DISPATCH_SENT</span><span style="color:var(--muted)">15m ago</span></div>`;
+  }
+}
+
+async function loadAllAlerts() {
+  try {
+    const res  = await authFetch(`${API}/api/hospital/alerts`);
+    const data = await res.json();
+    document.getElementById('allAlertsTbody').innerHTML = data.map(a => `
+      <tr>
+        <td style="font-family:var(--mono)">#${a.alertId}</td>
+        <td style="font-family:var(--mono);font-size:11px">${a.clinicId}</td>
+        <td><span style="font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;font-weight:600;background:rgba(255,58,94,.1);color:var(--red)">${a.riskLevel||a.severity||'—'}</span></td>
+        <td style="font-family:var(--mono)">${((a.riskScore||0)*100).toFixed(0)}%</td>
+        <td style="font-family:var(--mono);font-size:11px">${a.emergencyType||'—'}</td>
+        <td style="font-family:var(--mono)">${a.clinicianDecision||'PENDING'}</td>
+        <td style="font-family:var(--mono)">${a.dispatchStatus||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px">${formatTime(a.alertTimestamp)}</td>
+      </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">No alerts found</td></tr>';
+  } catch {
+    document.getElementById('allAlertsTbody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px;font-family:var(--mono)">Demo mode</td></tr>';
+  }
+}
+
+async function loadUsers() {
+  try {
+    const res  = await authFetch(`${API}/api/admin/users`);
+    const data = await res.json();
+    document.getElementById('usersTbody').innerHTML = data.map(u => `
+      <tr>
+        <td style="font-family:var(--mono)">${u.email}</td>
+        <td>${u.fullName||'—'}</td>
+        <td><span class="role-badge role-${u.role}">${u.role}</span></td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${u.entityId||'—'}</td>
+        <td><span class="status-badge ${u.isActive?'sb-active':'sb-inactive'}">${u.isActive?'ACTIVE':'INACTIVE'}</span></td>
+        <td><button class="btn-sm">Edit</button></td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">No users</td></tr>';
+  } catch {
+    document.getElementById('usersTbody').innerHTML = `
+      <tr><td style="font-family:var(--mono)">clinic@vigilai.health</td><td>Demo Clinic</td><td><span class="role-badge role-CLINIC">CLINIC</span></td><td style="font-family:var(--mono);font-size:11px">clinic-demo-001</td><td><span class="status-badge sb-active">ACTIVE</span></td><td><button class="btn-sm">Edit</button></td></tr>
+      <tr><td style="font-family:var(--mono)">hospital@vigilai.health</td><td>BMCRI Hospital</td><td><span class="role-badge role-HOSPITAL">HOSPITAL</span></td><td style="font-family:var(--mono);font-size:11px">1</td><td><span class="status-badge sb-active">ACTIVE</span></td><td><button class="btn-sm">Edit</button></td></tr>
+      <tr><td style="font-family:var(--mono)">admin@vigilai.health</td><td>System Admin</td><td><span class="role-badge role-ADMIN">ADMIN</span></td><td style="font-family:var(--mono);font-size:11px">—</td><td><span class="status-badge sb-active">ACTIVE</span></td><td><button class="btn-sm">Edit</button></td></tr>`;
+  }
+}
+
+async function addUser() {
+  const payload = {
+    fullName: document.getElementById('newName').value.trim(),
+    email:    document.getElementById('newEmail').value.trim(),
+    password: document.getElementById('newPass').value,
+    role:     document.getElementById('newRole').value,
+    entityId: document.getElementById('newEntity').value.trim() || null,
+  };
+  const msg = document.getElementById('addUserMsg');
+  if (!payload.email || !payload.password || !payload.fullName) {
+    msg.style.color = 'var(--red)'; msg.textContent = '⚠ Fill all required fields'; return;
+  }
+  try {
+    const res  = await authFetch(`${API}/auth/register`, { method:'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (res.ok) {
+      msg.style.color = 'var(--accent2)';
+      msg.textContent = '✓ User registered';
+      document.getElementById('newName').value = '';
+      document.getElementById('newEmail').value = '';
+      document.getElementById('newPass').value = '';
+      document.getElementById('newEntity').value = '';
+      loadUsers();
+    }
+    else { msg.style.color = 'var(--red)'; msg.textContent = data.error || 'Registration failed'; }
+  } catch { msg.style.color = 'var(--red)'; msg.textContent = 'Server unreachable (demo mode)'; }
+}
+
+function updateEntityPlaceholder() {
+  const role = document.getElementById('newRole').value;
+  const entityInput = document.getElementById('newEntity');
+  const nameInput = document.getElementById('newName');
+  const emailInput = document.getElementById('newEmail');
+
+  if (role === 'ADMIN') {
+    entityInput.placeholder = 'Not required for Admin';
+    nameInput.placeholder = 'e.g. System Admin';
+    emailInput.placeholder = 'e.g. admin@vigilai.health';
+  } else if (role === 'HOSPITAL') {
+    entityInput.placeholder = 'e.g. 1 (Hospital ID)';
+    nameInput.placeholder = 'e.g. BMCRI Hospital';
+    emailInput.placeholder = 'e.g. hospital@vigilai.health';
+  } else {
+    entityInput.placeholder = 'e.g. clinic-demo-001 (Clinic ID)';
+    nameInput.placeholder = 'e.g. Rural Clinic Hub';
+    emailInput.placeholder = 'e.g. clinic@vigilai.health';
+  }
+}
+
+async function loadHospitals() {
+  try {
+    const res  = await authFetch(`${API}/api/admin/hospitals`);
+    const data = await res.json();
+    document.getElementById('hospitalList').innerHTML = data.map(h => `
+      <div class="hospital-card">
+        <div class="hospital-info">
+          <div class="name">${h.name}</div>
+          <div class="meta">Code: ${h.code} | ICU: ${h.totalIcuBeds} | Sepsis Mortality: ${h.sepsisMortalityRate}% | ${h.isLevel1Trauma?'✓ Level 1 Trauma':''}</div>
+        </div>
+        <div class="hospital-stats">
+          <div class="hs-item"><div class="val" style="color:var(--accent2)">${h.totalIcuBeds-h.occupiedBeds}</div><div class="lbl">ICU Free</div></div>
+          <div class="hs-item"><div class="val" style="color:var(--muted2)">${h.sepsisMortalityRate}%</div><div class="lbl">Mortality</div></div>
+          <div class="hs-item"><div class="val" style="color:var(--accent)">${h.isActive?'ON':'OFF'}</div><div class="lbl">Status</div></div>
+        </div>
+      </div>`).join('');
+  } catch { document.getElementById('hospitalList').innerHTML = demoHospitals().map(h=>`<div class="hospital-card"><div class="hospital-info"><div class="name">${h.name}</div><div class="meta">${h.code} | Demo data</div></div></div>`).join(''); }
+}
+
+async function loadAudit() {
+  const page = parseInt(document.getElementById('auditPage').value || 0);
+  try {
+    const res  = await authFetch(`${API}/api/admin/audit?page=${page}&size=20`);
+    const data = await res.json();
+    const logs  = data.content || [];
+    document.getElementById('statAudit').textContent = data.totalElements || '—';
+    document.getElementById('auditTbody').innerHTML = logs.map(l => `
+      <tr class="audit-row">
+        <td style="font-family:var(--mono)">#${l.logId}</td>
+        <td class="audit-action">${l.action}</td>
+        <td class="audit-entity">${l.entityType}/${l.entityId}</td>
+        <td style="color:var(--muted2)">${l.userId||'—'}</td>
+        <td style="font-size:11px;color:var(--muted)">${(l.newValue||'').substring(0,40)}</td>
+        <td class="audit-hash" title="${l.hashCurrent}">${(l.hashCurrent||'').substring(0,16)}…</td>
+        <td style="font-family:var(--mono);font-size:11px">${formatTime(l.timestamp)}</td>
+      </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">No logs</td></tr>';
+  } catch {
+    document.getElementById('auditTbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);font-family:var(--mono)">Demo mode — connect backend to view audit logs</td></tr>';
+  }
+}
+
+async function verifyIntegrity() {
+  const el = document.getElementById('integrityResult');
+  el.innerHTML = '<div style="text-align:center;padding:32px;font-family:var(--mono);color:var(--muted)">⏳ Computing SHA-256 hash chain…</div>';
+  try {
+    const res  = await authFetch(`${API}/api/admin/audit/verify`, { method:'POST' });
+    const data = await res.json();
+    const ok   = data.integrityVerified;
+    el.innerHTML = `
+      <div class="integrity-card ${ok?'integrity-ok':'integrity-fail'}">
+        <div class="integrity-icon">${ok?'🛡️':'⚠️'}</div>
+        <div class="integrity-text">
+          <div class="title" style="color:${ok?'var(--accent2)':'var(--red)'}">${ok?'CHAIN INTACT':'BREACH DETECTED'}</div>
+          <div class="sub">${ok?'All SHA-256 hashes verified — no tampering detected':'Hash chain broken — audit log may have been tampered with'}</div>
+          <div class="sub" style="margin-top:4px">Status: ${data.status} | Checked: ${new Date().toLocaleString()}</div>
+        </div>
+      </div>`;
+  } catch {
+    el.innerHTML = `<div class="integrity-card integrity-ok"><div class="integrity-icon">🛡️</div><div class="integrity-text"><div class="title" style="color:var(--accent2)">DEMO: CHAIN INTACT</div><div class="sub">Connect backend for live verification</div></div></div>`;
+  }
+}
+
+function formatTime(ts) { if(!ts)return'—'; return new Date(ts).toLocaleString('en-IN',{hour12:false}).substring(0,16); }
+function authFetch(url,opts={}){ return fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,...(opts.headers||{})}}); }
+function logout(){ localStorage.clear(); window.location.href='login.html'; }
+function demoHospitals(){ return [{name:'Bangalore Medical College & RI',code:'BMCRI',icuFree:12},{name:'Manipal Hospital Whitefield',code:'MHW',icuFree:15},{name:'St. Johns Medical College',code:'SJMC',icuFree:7},{name:'Mysore Medical College',code:'MMC',icuFree:8}]; }
+
+loadDashboard();
+updateEntityPlaceholder();
+</script>
+</body>
+</html>

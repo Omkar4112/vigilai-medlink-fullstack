@@ -1,0 +1,28 @@
+# Build folders
+backend/target/
+backend/bin/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+ai-service/venv/
+ai-service/env/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific logs and output
+logs.txt
+output.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database data
+database/data/
+postgres_data/

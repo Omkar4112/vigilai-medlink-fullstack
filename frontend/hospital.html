@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VigilAI — Hospital Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020b12;--surface:#050f1a;--surface2:#081624;
+  --border:#0a1f30;--border2:#153247;
+  --red:#ff2d55;--orange:#ff6b00;--yellow:#ffd60a;--green:#30d158;--blue:#0a84ff;
+  --teal:#00c7be;--text:#dff0ff;--muted:#2e5470;--muted2:#4a7890;
+  --mono:'DM Mono',monospace;--sans:'Manrope',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{width:230px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 0;position:fixed;z-index:100}
+.sb-logo{padding:4px 20px 24px;border-bottom:1px solid var(--border)}
+.sb-logo .name{font-size:17px;font-weight:800}
+.sb-logo .sub{font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:3px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:13px;font-weight:600;color:var(--muted2);cursor:pointer;border-left:3px solid transparent;transition:all .15s;position:relative}
+.sb-item:hover{background:rgba(10,132,255,.05);color:var(--text)}
+.sb-item.active{border-left-color:var(--blue);color:var(--blue);background:rgba(10,132,255,.08)}
+.sb-item .icon{width:22px;text-align:center;font-size:16px}
+.sb-badge{position:absolute;right:16px;min-width:20px;height:20px;background:var(--red);border-radius:10px;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 5px;animation:pop .3s cubic-bezier(.36,.07,.19,.97)}
+@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+.sb-section{padding:20px 20px 8px;font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.sb-bottom{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
+.user-chip{display:flex;align-items:center;gap:10px}
+.user-avatar{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#0a84ff,#00c7be);display:grid;place-items:center;font-size:15px;font-weight:700}
+.user-info .name{font-size:13px;font-weight:700}
+.user-info .role{font-size:10px;font-family:var(--mono);color:var(--muted)}
+.logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;margin-left:auto}
+.logout-btn:hover{color:var(--red)}
+
+.main{margin-left:230px;flex:1;padding:28px 32px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+.page-title h2{font-size:24px;font-weight:800}
+.page-title p{font-size:12px;font-family:var(--mono);color:var(--muted);margin-top:2px}
+.live-badge{display:flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(255,45,85,.08);border:1px solid rgba(255,45,85,.2);border-radius:10px;font-size:12px;font-family:var(--mono);color:var(--red)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.stat .label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.stat .value{font-size:26px;font-weight:800;font-family:var(--mono)}
+.stat .sub{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* ICU bar */
+.icu-bar{background:var(--border);border-radius:4px;height:8px;margin-top:10px;overflow:hidden}
+.icu-fill{height:100%;border-radius:4px;transition:width .5s ease}
+
+/* Panel */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px}
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.panel-header h3{font-size:15px;font-weight:700}
+.panel-actions{display:flex;gap:8px}
+.btn-filter{font-size:11px;font-family:var(--mono);padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted2);cursor:pointer;transition:all .15s}
+.btn-filter.active,.btn-filter:hover{border-color:var(--blue);color:var(--blue);background:rgba(10,132,255,.08)}
+
+/* Alert cards */
+.alert-grid{display:grid;gap:12px}
+.alert-card{background:var(--surface2);border:1px solid var(--border2);border-radius:14px;padding:18px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;animation:fadeIn .3s ease;position:relative;overflow:hidden;transition:border-color .2s}
+.alert-card:hover{border-color:var(--blue)}
+.alert-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px}
+.alert-card.critical::before{background:var(--red)}
+.alert-card.high::before{background:var(--orange)}
+.alert-card.medium::before{background:var(--yellow)}
+.alert-card.low::before{background:var(--green)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+
+.alert-risk{text-align:center;min-width:70px}
+.risk-circle{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;font-family:var(--mono);margin:0 auto 6px}
+.risk-circle.critical{background:rgba(255,45,85,.15);color:var(--red);border:2px solid rgba(255,45,85,.3)}
+.risk-circle.high{background:rgba(255,107,0,.12);color:var(--orange);border:2px solid rgba(255,107,0,.3)}
+.risk-circle.medium{background:rgba(255,214,10,.08);color:var(--yellow);border:2px solid rgba(255,214,10,.2)}
+.risk-circle.low{background:rgba(48,209,88,.08);color:var(--green);border:2px solid rgba(48,209,88,.2)}
+
+.alert-info .header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.alert-info .pid{font-size:16px;font-weight:700}
+.alert-info .etype{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;background:rgba(0,199,190,.1);color:var(--teal);font-weight:600}
+.alert-info .vitals{font-size:12px;font-family:var(--mono);color:var(--muted2);line-height:1.8}
+.alert-info .vitals b{color:var(--text)}
+.alert-info .explanation{font-size:12px;color:var(--muted2);margin-top:8px;line-height:1.6;display:none}
+.alert-card.expanded .explanation{display:block}
+.alert-info .features{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.feature-tag{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;background:rgba(255,45,85,.08);color:rgba(255,100,100,.9);border:1px solid rgba(255,45,85,.15)}
+
+.alert-actions{display:flex;flex-direction:column;gap:8px;min-width:130px}
+.btn-approve{padding:9px 16px;background:var(--green);border:none;border-radius:8px;color:#000;font-weight:700;font-size:12px;cursor:pointer;transition:opacity .2s}
+.btn-approve:hover{opacity:.85}
+.btn-hold{padding:9px 16px;background:rgba(255,214,10,.1);border:1px solid rgba(255,214,10,.3);border-radius:8px;color:var(--yellow);font-weight:600;font-size:12px;cursor:pointer;transition:all .2s}
+.btn-hold:hover{background:rgba(255,214,10,.2)}
+.btn-dismiss{padding:6px 16px;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--muted);font-size:11px;cursor:pointer;transition:all .2s}
+.btn-dismiss:hover{border-color:var(--red);color:var(--red)}
+.btn-expand{padding:5px 12px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--mono)}
+.btn-expand:hover{border-color:var(--blue);color:var(--blue)}
+
+.time-ago{font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:4px;text-align:center}
+
+/* Dispatched alerts */
+.dispatch-card{background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.dispatch-status{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:6px;font-weight:600}
+.status-DISPATCHED{background:rgba(10,132,255,.1);color:var(--blue)}
+.status-EN_ROUTE{background:rgba(255,107,0,.1);color:var(--orange)}
+.status-ARRIVED{background:rgba(48,209,88,.1);color:var(--green)}
+
+/* Doctors */
+.doctor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.doctor-card{background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:16px;position:relative}
+.doctor-status{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%}
+.doctor-status.available{background:var(--green);box-shadow:0 0 6px var(--green)}
+.doctor-status.busy{background:var(--red)}
+.doctor-name{font-size:14px;font-weight:700;margin-bottom:4px}
+.doctor-spec{font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:12px}
+.toggle-avail{font-size:11px;font-family:var(--mono);padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted2);width:100%;transition:all .15s}
+.toggle-avail:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ETA tracker */
+.eta-card{background:linear-gradient(135deg,rgba(10,132,255,.08),rgba(0,199,190,.05));border:1px solid rgba(10,132,255,.15);border-radius:14px;padding:20px;text-align:center;margin-bottom:12px}
+.eta-num{font-size:48px;font-weight:800;font-family:var(--mono);color:var(--blue)}
+.eta-label{font-size:12px;font-family:var(--mono);color:var(--muted)}
+
+.empty-state{text-align:center;padding:48px;color:var(--muted);font-family:var(--mono);font-size:13px}
+.empty-icon{font-size:36px;margin-bottom:12px}
+
+/* Notification toast */
+.toast{position:fixed;top:20px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 20px;max-width:320px;z-index:999;animation:slideIn .3s ease;display:none}
+.toast.show{display:block}
+.toast.critical{border-left:4px solid var(--red)}
+.toast.high{border-left:4px solid var(--orange)}
+@keyframes slideIn{from{transform:translateX(120%)}to{transform:none}}
+.toast .toast-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.toast .toast-body{font-size:12px;font-family:var(--mono);color:var(--muted2)}
+</style>
+</head>
+<body>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-title" id="toastTitle">🚨 New Alert</div>
+  <div class="toast-body"  id="toastBody"></div>
+</div>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sb-logo">
+    <div class="name">🏥 VigilAI</div>
+    <div class="sub">HOSPITAL DASHBOARD</div>
+  </div>
+  <div class="sb-section">Emergency</div>
+  <div class="sb-item active" onclick="showSection('alerts')">
+    <span class="icon">🚨</span> Incoming Alerts
+    <span class="sb-badge" id="alertBadge" style="display:none">0</span>
+  </div>
+  <div class="sb-item" onclick="showSection('dispatched')">
+    <span class="icon">🚑</span> Dispatched
+  </div>
+  <div class="sb-section">Hospital</div>
+  <div class="sb-item" onclick="showSection('icu')">
+    <span class="icon">🛏️</span> ICU Beds
+  </div>
+  <div class="sb-item" onclick="showSection('doctors')">
+    <span class="icon">👨‍⚕️</span> Doctors
+  </div>
+  <div class="sb-bottom">
+    <div class="user-chip">
+      <div class="user-avatar" id="userAv">H</div>
+      <div class="user-info">
+        <div class="name" id="userName">Hospital User</div>
+        <div class="role">HOSPITAL</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">⏻</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="main">
+  <div class="topbar">
+    <div class="page-title">
+      <h2 id="hospitalName">Hospital Dashboard</h2>
+      <p id="hospitalSub">// loading hospital data…</p>
+    </div>
+    <div class="live-badge"><span class="live-dot"></span>LIVE MONITORING</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="label">Pending Alerts</div>
+      <div class="value" id="statPending" style="color:var(--red)">—</div>
+      <div class="sub">awaiting decision</div>
+    </div>
+    <div class="stat">
+      <div class="label">ICU Available</div>
+      <div class="value" id="statICU" style="color:var(--green)">—</div>
+      <div class="sub" id="statICUSub">of — total</div>
+      <div class="icu-bar"><div class="icu-fill" id="icuFill" style="background:var(--green);width:0%"></div></div>
+    </div>
+    <div class="stat">
+      <div class="label">Doctors On Duty</div>
+      <div class="value" id="statDoctors" style="color:var(--blue)">—</div>
+      <div class="sub">available now</div>
+    </div>
+    <div class="stat">
+      <div class="label">Dispatched Today</div>
+      <div class="value" id="statDispatched" style="color:var(--teal)">—</div>
+      <div class="sub">ambulances</div>
+    </div>
+    <div class="stat">
+      <div class="label">Approved</div>
+      <div class="value" id="statApproved" style="color:var(--green)">—</div>
+      <div class="sub">decisions made</div>
+    </div>
+  </div>
+
+  <!-- Incoming Alerts -->
+  <div id="section-alerts">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>🚨 Incoming Alerts</h3>
+        <div class="panel-actions">
+          <button class="btn-filter active" onclick="filterAlerts('all',this)">ALL</button>
+          <button class="btn-filter" onclick="filterAlerts('CRITICAL',this)">CRITICAL</button>
+          <button class="btn-filter" onclick="filterAlerts('HIGH',this)">HIGH</button>
+          <button class="btn-filter" onclick="filterAlerts('MEDIUM',this)">MEDIUM</button>
+          <button class="btn-filter" onclick="loadAlerts()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="alert-grid" id="alertGrid">
+        <div class="empty-state"><div class="empty-icon">📡</div>Loading alerts…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dispatched -->
+  <div id="section-dispatched" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>🚑 Dispatched Alerts</h3>
+      </div>
+      <div id="dispatchedList">
+        <div class="empty-state"><div class="empty-icon">🚑</div>Loading dispatched alerts…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ICU -->
+  <div id="section-icu" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px">
+      <div class="panel">
+        <div class="panel-header"><h3>🛏️ ICU Status</h3></div>
+        <div style="text-align:center;margin-bottom:24px">
+          <div style="font-size:60px;font-weight:800;font-family:var(--mono);color:var(--green)" id="icuAvailBig">—</div>
+          <div style="font-size:13px;font-family:var(--mono);color:var(--muted)">BEDS AVAILABLE</div>
+          <div style="margin-top:8px;font-size:13px;color:var(--muted2)" id="icuTotalSub">of — total</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+          <div>
+            <label style="font-size:10px;font-family:var(--mono);color:var(--muted);display:block;margin-bottom:6px">TOTAL BEDS</label>
+            <input type="number" id="icuTotal" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:16px;padding:10px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:10px;font-family:var(--mono);color:var(--muted);display:block;margin-bottom:6px">OCCUPIED</label>
+            <input type="number" id="icuOccupied" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:16px;padding:10px;outline:none">
+          </div>
+        </div>
+        <button class="btn-approve" style="width:100%;margin-top:16px" onclick="updateICU()">Update ICU Count</button>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>📊 Bed Utilisation</h3></div>
+        <div id="icuVis" style="display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-top:8px"></div>
+        <div style="display:flex;gap:16px;margin-top:16px;font-size:12px;font-family:var(--mono)">
+          <span style="color:var(--red)">■ Occupied</span>
+          <span style="color:var(--green)">■ Available</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Doctors -->
+  <div id="section-doctors" style="display:none">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>👨‍⚕️ Doctor Availability</h3>
+        <span id="doctorBadge" style="font-size:12px;font-family:var(--mono);color:var(--muted)"></span>
+      </div>
+      <div class="doctor-grid" id="doctorGrid">
+        <div class="empty-state"><div class="empty-icon">👨‍⚕️</div>Loading doctors…</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API       = 'http://localhost:8080';
+const token     = localStorage.getItem('vigilai_token')    || 'demo';
+const hospitalId= localStorage.getItem('vigilai_entityId') || '1';
+const userName  = localStorage.getItem('vigilai_name')     || 'Hospital User';
+
+if (!token || token === 'null') window.location.href = 'login.html';
+
+document.getElementById('userName').textContent = userName;
+document.getElementById('userAv').textContent   = userName.charAt(0).toUpperCase();
+
+let allAlerts   = [];
+let filterLevel = 'all';
+let clinicianId = localStorage.getItem('vigilai_email') || 'doctor-1';
+
+function showSection(name) {
+  ['alerts','dispatched','icu','doctors'].forEach(s => {
+    document.getElementById(`section-${s}`).style.display = s === name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.sb-item')[['alerts','dispatched','icu','doctors'].indexOf(name)]?.classList.add('active');
+  if (name === 'dispatched') loadDispatched();
+  if (name === 'icu')        loadICU();
+  if (name === 'doctors')    loadDoctors();
+}
+
+async function loadDashboard() {
+  try {
+    const res  = await authFetch(`${API}/api/hospital/dashboard?hospitalId=${hospitalId}`);
+    const data = await res.json();
+    const h    = data.hospital || {};
+    document.getElementById('hospitalName').textContent = h.name || 'Hospital Dashboard';
+    document.getElementById('hospitalSub').textContent  = `// ${h.code || 'H-' + hospitalId} | ICU Capacity: ${data.icuTotal || '—'}`;
+    document.getElementById('statPending').textContent   = data.pendingAlerts   || 0;
+    document.getElementById('statDispatched').textContent= data.dispatchedAlerts|| 0;
+    document.getElementById('statDoctors').textContent   = data.availableDoctors || '—';
+
+    const avail = data.icuAvailable || 0;
+    const total = data.icuTotal     || 1;
+    const pct   = ((total - avail) / total * 100).toFixed(0);
+    document.getElementById('statICU').textContent    = avail;
+    document.getElementById('statICUSub').textContent = `of ${total} total`;
+    document.getElementById('icuFill').style.width    = pct + '%';
+    document.getElementById('icuFill').style.background = pct > 80 ? 'var(--red)' : pct > 60 ? 'var(--orange)' : 'var(--green)';
+  } catch {
+    // demo
+    document.getElementById('hospitalName').textContent = 'BMCRI Hospital (Demo)';
+    document.getElementById('statPending').textContent  = 3;
+    document.getElementById('statICU').textContent      = 12;
+    document.getElementById('statICUSub').textContent   = 'of 40 total';
+    document.getElementById('statDoctors').textContent  = 5;
+    document.getElementById('statDispatched').textContent = 8;
+    document.getElementById('icuFill').style.width = '70%';
+    document.getElementById('icuFill').style.background = 'var(--orange)';
+  }
+}
+
+async function loadAlerts() {
+  try {
+    const res  = await authFetch(`${API}/api/hospital/alerts`);
+    allAlerts  = await res.json();
+  } catch {
+    allAlerts = demoAlerts();
+  }
+  renderAlerts();
+  const pending = allAlerts.filter(a => a.clinicianDecision === 'PENDING').length;
+  document.getElementById('statPending').textContent = pending;
+  const badge = document.getElementById('alertBadge');
+  badge.textContent = pending;
+  badge.style.display = pending > 0 ? 'grid' : 'none';
+}
+
+function filterAlerts(level, btn) {
+  filterLevel = level;
+  document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const grid = document.getElementById('alertGrid');
+  const data = filterLevel === 'all' ? allAlerts
+      : allAlerts.filter(a => (a.riskLevel||a.severity||'').toUpperCase() === filterLevel.toUpperCase());
+
+  if (!data.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div>No ${filterLevel === 'all' ? '' : filterLevel + ' '}alerts</div>`;
+    return;
+  }
+
+  grid.innerHTML = data.map(a => {
+    const level = (a.riskLevel || a.severity || 'LOW').toLowerCase();
+    const score = ((a.riskScore || 0) * 100).toFixed(0);
+    const isPending = a.clinicianDecision === 'PENDING';
+    const feats = (a.topFeatures || []).slice(0, 3);
+    return `
+    <div class="alert-card ${level}" id="alert-${a.alertId}">
+      <div class="alert-risk">
+        <div class="risk-circle ${level}">${score}%</div>
+        <div style="font-size:10px;font-family:var(--mono);color:var(--muted);font-weight:700">${(a.riskLevel||a.severity||'').toUpperCase()}</div>
+        <div class="time-ago">${timeAgo(a.alertTimestamp)}</div>
+      </div>
+      <div class="alert-info">
+        <div class="header">
+          <span class="pid">Patient #${a.patient?.patientId || '—'}</span>
+          ${a.emergencyType ? `<span class="etype">${a.emergencyType}</span>` : ''}
+          ${!isPending ? `<span style="font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;background:rgba(48,209,88,.1);color:var(--green)">${a.clinicianDecision}</span>` : ''}
+        </div>
+        <div class="vitals">
+          <b>HR:</b>${a.heartRate||'—'} &nbsp; <b>Temp:</b>${a.temperature||'—'}°C &nbsp;
+          <b>RR:</b>${a.respiratoryRate||'—'} &nbsp; <b>BP:</b>${a.bpSystolic||'—'}/${a.bpDiastolic||'—'} &nbsp;
+          <b>SpO2:</b>${a.spo2||'—'}% &nbsp; <b>Age:</b>${a.patientAge||'—'}y
+        </div>
+        ${feats.length ? `<div class="features">${feats.map(f=>`<span class="feature-tag">${f}</span>`).join('')}</div>` : ''}
+        <div class="explanation">
+          ${a.llmExplanation || ''}
+          ${a.treatmentRecs ? `<br><br><b>Treatment:</b><br>${a.treatmentRecs}` : ''}
+        </div>
+        ${a.llmExplanation ? `<button class="btn-expand" onclick="toggleExpand(${a.alertId})">▼ Show AI Explanation</button>` : ''}
+      </div>
+      <div class="alert-actions">
+        ${isPending ? `
+          <button class="btn-approve" onclick="approveAlert(${a.alertId})">✅ Approve</button>
+          <button class="btn-hold" onclick="holdAlert(${a.alertId})">⏸ Hold</button>
+          <button class="btn-dismiss" onclick="dismissAlert(${a.alertId})">✕ Dismiss</button>
+        ` : `<div style="font-size:11px;font-family:var(--mono);color:var(--muted);text-align:center">${a.clinicianDecision}<br>at ${formatTime(a.decisionAt)}</div>`}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('statApproved').textContent = allAlerts.filter(a=>a.clinicianDecision==='APPROVED').length;
+}
+
+function toggleExpand(id) {
+  const el = document.getElementById(`alert-${id}`);
+  el.classList.toggle('expanded');
+  el.querySelector('.btn-expand').textContent = el.classList.contains('expanded') ? '▲ Hide AI Explanation' : '▼ Show AI Explanation';
+}
+
+async function approveAlert(alertId) {
+  try {
+    const res = await authFetch(`${API}/api/hospital/alerts/${alertId}/approve`, {
+      method:'POST', headers:{'X-Clinician-Id': clinicianId}
+    });
+    if (res.ok) { showToast('✅ Approved','Ambulance dispatched — routing to best hospital','high'); loadAlerts(); }
+  } catch { showToast('⚡ Demo','Alert approved (demo mode)','high'); markDecision(alertId,'APPROVED'); }
+}
+
+async function holdAlert(alertId) {
+  const reason = prompt('Reason for hold:');
+  if (!reason) return;
+  try {
+    await authFetch(`${API}/api/hospital/alerts/${alertId}/hold`, {
+      method:'POST', headers:{'X-Clinician-Id': clinicianId},
+      body: JSON.stringify({ reason })
+    });
+    loadAlerts();
+  } catch { markDecision(alertId,'HOLD'); }
+}
+
+async function dismissAlert(alertId) {
+  if (!confirm('Dismiss this alert?')) return;
+  try {
+    await authFetch(`${API}/api/hospital/alerts/${alertId}/dismiss`, {
+      method:'POST', headers:{'X-Clinician-Id': clinicianId}
+    });
+    loadAlerts();
+  } catch { markDecision(alertId,'DISMISSED'); }
+}
+
+function markDecision(alertId, decision) {
+  const a = allAlerts.find(x=>x.alertId===alertId);
+  if (a) { a.clinicianDecision = decision; renderAlerts(); }
+}
+
+async function loadDispatched() {
+  try {
+    const res  = await authFetch(`${API}/api/hospital/alerts/dispatched?hospitalId=${hospitalId}`);
+    const data = await res.json();
+    renderDispatched(data);
+  } catch { renderDispatched(demoDispatched()); }
+}
+
+function renderDispatched(data) {
+  const el = document.getElementById('dispatchedList');
+  if (!data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🚑</div>No dispatched alerts</div>'; return; }
+  el.innerHTML = data.map(a => `
+    <div class="dispatch-card">
+      <div>
+        <div style="font-size:14px;font-weight:700">Patient #${a.patient?.patientId||'—'} &nbsp; <span style="font-size:12px;font-family:var(--mono);color:var(--muted)">${a.clinicId}</span></div>
+        <div style="font-size:12px;font-family:var(--mono);color:var(--muted2);margin-top:4px">Risk: ${((a.riskScore||0)*100).toFixed(0)}% ${a.riskLevel||''} &nbsp;|&nbsp; Dispatched: ${formatTime(a.dispatchedAt)}</div>
+      </div>
+      <span class="dispatch-status status-${a.dispatchStatus||'DISPATCHED'}">${a.dispatchStatus||'DISPATCHED'}</span>
+    </div>`).join('');
+}
+
+async function loadICU() {
+  try {
+    const res  = await authFetch(`${API}/api/hospital/dashboard?hospitalId=${hospitalId}`);
+    const data = await res.json();
+    const avail = data.icuAvailable || 0;
+    const total = data.icuTotal     || 0;
+    const occ   = data.icuOccupied  || 0;
+    document.getElementById('icuAvailBig').textContent = avail;
+    document.getElementById('icuTotalSub').textContent = `of ${total} total`;
+    document.getElementById('icuTotal').value    = total;
+    document.getElementById('icuOccupied').value = occ;
+    renderICUGrid(total, occ);
+  } catch {
+    document.getElementById('icuAvailBig').textContent = 12;
+    document.getElementById('icuTotal').value    = 40;
+    document.getElementById('icuOccupied').value = 28;
+    renderICUGrid(40, 28);
+  }
+}
+
+function renderICUGrid(total, occ) {
+  const el = document.getElementById('icuVis');
+  el.innerHTML = Array.from({length: total}, (_,i) =>
+    `<div style="aspect-ratio:1;border-radius:6px;background:${i < occ ? 'rgba(255,45,85,.25)' : 'rgba(48,209,88,.2)'};border:1px solid ${i < occ ? 'rgba(255,45,85,.3)' : 'rgba(48,209,88,.3)'};cursor:default" title="${i < occ ? 'Occupied' : 'Available'}"></div>`
+  ).join('');
+}
+
+async function updateICU() {
+  const total = parseInt(document.getElementById('icuTotal').value);
+  const occ   = parseInt(document.getElementById('icuOccupied').value);
+  try {
+    await authFetch(`${API}/api/hospital/icu/beds?hospitalId=${hospitalId}`, {
+      method:'PUT', body: JSON.stringify({ totalIcuBeds: total, occupiedBeds: occ })
+    });
+  } catch {}
+  renderICUGrid(total, occ);
+  document.getElementById('icuAvailBig').textContent = total - occ;
+  document.getElementById('statICU').textContent     = total - occ;
+  showToast('✅ Updated', `ICU: ${total - occ} available of ${total}`, 'high');
+}
+
+async function loadDoctors() {
+  try {
+    const res  = await authFetch(`${API}/api/hospital/doctors?hospitalId=${hospitalId}`);
+    const data = await res.json();
+    renderDoctors(data);
+  } catch { renderDoctors(demoDoctors()); }
+}
+
+function renderDoctors(data) {
+  const grid = document.getElementById('doctorGrid');
+  const avail = data.filter(d=>d.isAvailable).length;
+  document.getElementById('doctorBadge').textContent = `${avail}/${data.length} available`;
+  grid.innerHTML = data.map(d => `
+    <div class="doctor-card">
+      <div class="doctor-status ${d.isAvailable ? 'available' : 'busy'}"></div>
+      <div class="doctor-name">${d.fullName}</div>
+      <div class="doctor-spec">${d.specialty || 'General'}</div>
+      <button class="toggle-avail" onclick="toggleDoctor(${d.doctorId}, ${!d.isAvailable})">
+        ${d.isAvailable ? '🟢 Available — Mark Busy' : '🔴 Busy — Mark Available'}
+      </button>
+    </div>`).join('');
+}
+
+async function toggleDoctor(id, available) {
+  try {
+    await authFetch(`${API}/api/hospital/doctors/${id}/availability`, {
+      method:'PUT', body: JSON.stringify({ available })
+    });
+    loadDoctors();
+  } catch { alert('Demo mode — cannot toggle'); }
+}
+
+// WebSocket real-time alerts
+function connectWebSocket() {
+  try {
+    const ws = new WebSocket('ws://localhost:8080/ws/websocket');
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'NEW_ALERT') {
+        showToast(`🚨 ${msg.riskLevel} Alert`,
+            `Patient risk ${(msg.riskScore*100).toFixed(0)}% — ${msg.emergencyType||'Unknown'}`,
+            msg.riskLevel.toLowerCase());
+        loadAlerts();
+      }
+    };
+    ws.onerror = () => { setTimeout(connectWebSocket, 5000); };
+  } catch {}
+}
+
+function showToast(title, body, type='high') {
+  const t = document.getElementById('toast');
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastBody').textContent  = body;
+  t.className = `toast show ${type}`;
+  setTimeout(() => t.classList.remove('show'), 5000);
+}
+
+// Helpers
+function timeAgo(ts) {
+  if (!ts) return '—';
+  const diff = Math.floor((Date.now() - new Date(ts)) / 60000);
+  if (diff < 1)  return 'just now';
+  if (diff < 60) return `${diff}m ago`;
+  return `${Math.floor(diff/60)}h ago`;
+}
+function formatTime(ts) { if (!ts) return '—'; return new Date(ts).toLocaleTimeString('en-IN',{hour12:false}); }
+function authFetch(url, opts={}) {
+  return fetch(url, { ...opts, headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${token}`, ...(opts.headers||{}) }});
+}
+function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+// Demo data
+function demoAlerts() {
+  return [
+    {alertId:1,riskLevel:'CRITICAL',riskScore:.92,clinicId:'clinic-demo-001',emergencyType:'SEPSIS',
+     heartRate:112,temperature:39.2,respiratoryRate:28,bpSystolic:95,bpDiastolic:60,spo2:89,patientAge:45,
+     clinicianDecision:'PENDING',alertTimestamp: new Date(Date.now()-25*60000).toISOString(),
+     topFeatures:['Blood Pressure Drop','Tachypnea','Oxygen Desaturation'],
+     llmExplanation:'Patient shows signs of septic shock with multi-organ involvement. HR, RR and BP all critically abnormal.',
+     patient:{patientId:1}},
+    {alertId:2,riskLevel:'HIGH',riskScore:.76,clinicId:'clinic-demo-002',emergencyType:'RESPIRATORY',
+     heartRate:105,temperature:38.8,respiratoryRate:32,bpSystolic:108,bpDiastolic:70,spo2:91,patientAge:28,
+     clinicianDecision:'PENDING',alertTimestamp: new Date(Date.now()-8*60000).toISOString(),
+     topFeatures:['Tachypnea','Fever','SpO2 borderline'],
+     patient:{patientId:2}},
+  ];
+}
+function demoDispatched() { return []; }
+function demoDoctors() {
+  return [
+    {doctorId:1,fullName:'Dr. Rajesh Kumar',specialty:'Critical Care / Sepsis',isAvailable:true},
+    {doctorId:2,fullName:'Dr. Priya Sharma', specialty:'Emergency Medicine',   isAvailable:true},
+    {doctorId:3,fullName:'Dr. Ahmed Khan',   specialty:'Cardiology',           isAvailable:false},
+    {doctorId:4,fullName:'Dr. Kavita Nair',  specialty:'Pulmonology',          isAvailable:true},
+  ];
+}
+
+// Init
+loadDashboard();
+loadAlerts();
+connectWebSocket();
+setInterval(loadAlerts, 30000); // poll every 30s
+</script>
+</body>
+</html>

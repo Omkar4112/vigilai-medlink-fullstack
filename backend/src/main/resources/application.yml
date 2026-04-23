@@ -1,0 +1,55 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/vigilai}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:OMKAR@111}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  # BUG FIX: jackson must be under spring, not under ai
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+  # Disable default Spring Security basic auth (we use JWT)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+# AI Service URL — BUG FIX: removed duplicate/orphan vigilai.ai-service.url
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://localhost:8000/predict}
+  llm:
+    url: ${LLM_SERVICE_URL:http://localhost:8001/explain}
+
+vigilai:
+  encryption:
+    master-key: ${VIGILAI_ENCRYPTION_MASTER_KEY:dGhpcyBpcyBhIDMyIGJ5dGUga2V5ISEh}
+  jwt:
+    secret: ${JWT_SECRET:vigilai_prod_secret_key_min_32_chars_long_!@#}
+    expiration-ms: 86400000  # 24 hours
+
+logging:
+  level:
+    com.vigilai: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.security: WARN
