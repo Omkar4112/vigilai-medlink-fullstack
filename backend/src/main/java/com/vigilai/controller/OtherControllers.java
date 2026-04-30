@@ -169,6 +169,8 @@ class AdminController {
     private final HospitalRepository hospitalRepo;
     private final UserRepository     userRepo;
     private final AlertRepository    alertRepo;
+    private final PatientRepository  patientRepo;
+    private final DoctorRepository   doctorRepo;
     private final AuditLogService    auditLog;
 
     @GetMapping("/dashboard/summary")

@@ -301,9 +301,9 @@ tr:hover td{background:rgba(200,255,0,.02)}
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>ID</th><th>Hospital Name</th><th>Code</th><th>ICU Capacity</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Hospital Name</th><th>Code</th><th>Location</th><th>ICU Capacity</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="hospitalTbody">
-              <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading hospitals…</td></tr>
+              <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Loading hospitals…</td></tr>
             </tbody>
           </table>
         </div>
@@ -574,8 +574,9 @@ async function loadHospitals() {
       <tr>
         <td style="font-family:var(--mono)">#${h.hospitalId}</td>
         <td style="font-weight:600">${h.name}</td>
-        <td style="font-family:var(--mono)">${h.code}</td>
-        <td style="font-family:var(--mono)">${h.occupiedBeds}/${h.totalIcuBeds} Beds</td>
+        <td style="font-family:var(--mono)">${h.code || '—'}</td>
+        <td style="font-size:12px;color:var(--muted2)">${h.location || '—'}</td>
+        <td style="font-family:var(--mono)">${(h.occupiedBeds || 0)}/${(h.totalIcuBeds || 0)} Beds</td>
         <td><span class="status-badge sb-active">ONLINE</span></td>
         <td><button class="btn-sm btn-danger" onclick="deleteHospital(${h.hospitalId})">Unregister</button></td>
       </tr>`).join('');
