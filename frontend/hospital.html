@@ -300,7 +300,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 </main>
 
 <script>
-const API       = 'http://localhost:8080';
+const API       = 'https://backend-ysf3.onrender.com';
 const token     = localStorage.getItem('vigilai_token')    || 'demo';
 const hospitalId= localStorage.getItem('vigilai_entityId') || '1';
 const userName  = localStorage.getItem('vigilai_name')     || 'Hospital User';
@@ -569,7 +569,7 @@ async function toggleDoctor(id, available) {
 // WebSocket real-time alerts
 function connectWebSocket() {
   try {
-    const ws = new WebSocket('ws://localhost:8080/ws/websocket');
+    const ws = new WebSocket('wss://backend-ysf3.onrender.com/ws/websocket');
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.type === 'NEW_ALERT') {
