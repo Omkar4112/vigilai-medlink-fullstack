@@ -18,4 +18,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
     @Query("SELECT COUNT(a) FROM Alert a WHERE a.clinicId = :cid AND a.clinicianDecision = 'PENDING'")
     long countPendingByClinic(@Param("cid") String clinicId);
+
+    long countByStatus(String status);
+    long countByClinicianDecision(String decision);
 }

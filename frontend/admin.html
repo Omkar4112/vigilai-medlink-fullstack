@@ -189,19 +189,19 @@ tr:hover td{background:rgba(200,255,0,.02)}
         <div class="stat-sub">registered accounts</div>
       </div>
       <div class="stat-card s2">
-        <div class="stat-label">Hospitals</div>
+        <div class="stat-label">Active Hospitals</div>
         <div class="stat-value" id="statHospitals" style="color:#4da6ff">—</div>
-        <div class="stat-sub">active facilities</div>
+        <div class="stat-sub" id="icuStatSub">0 ICU beds available</div>
       </div>
       <div class="stat-card s3">
-        <div class="stat-label">Total Alerts</div>
+        <div class="stat-label">System Alerts</div>
         <div class="stat-value" id="statAlerts" style="color:var(--red)">—</div>
-        <div class="stat-sub">all time</div>
+        <div class="stat-sub" id="alertStatSub">0 pending review</div>
       </div>
       <div class="stat-card s4">
-        <div class="stat-label">Audit Logs</div>
-        <div class="stat-value" id="statAudit" style="color:var(--teal)">—</div>
-        <div class="stat-sub">WORM entries</div>
+        <div class="stat-label">Medical Staff</div>
+        <div class="stat-value" id="statDoctors" style="color:var(--teal)">—</div>
+        <div class="stat-sub" id="doctorStatSub">0 doctors on duty</div>
       </div>
     </div>
 
@@ -276,12 +276,38 @@ tr:hover td{background:rgba(200,255,0,.02)}
 
   <!-- Hospitals -->
   <div id="section-hospitals" style="display:none">
-    <div class="panel">
-      <div class="panel-header">
-        <h3>🏥 Registered Hospitals</h3>
-        <button class="btn-sm" onclick="loadHospitals()">↻ Refresh</button>
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px">
+      <div class="panel">
+        <div class="panel-header"><h3>➕ Register Hospital</h3></div>
+        <div class="field" style="margin-bottom:12px"><label>Hospital Name</label><input id="hName" placeholder="e.g. City General"></div>
+        <div class="field" style="margin-bottom:12px"><label>Location / Address</label><input id="hLoc" placeholder="e.g. Bangalore, KA"></div>
+        <div class="field" style="margin-bottom:12px"><label>Contact / Phone</label><input id="hContact" placeholder="+91 ..."></div>
+        <div class="form-row">
+          <div class="field"><label>Total ICU Beds</label><input type="number" id="hIcu" value="10"></div>
+          <div class="field"><label>Trauma Level</label>
+            <select id="hLevel">
+              <option value="false">General</option>
+              <option value="true">Level 1 Trauma</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary" style="width:100%;margin-top:16px" onclick="registerHospital()">Register Facility</button>
       </div>
-      <div id="hospitalList">Loading…</div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>🏥 Registered Facilities</h3>
+          <button class="btn-sm" onclick="loadHospitals()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Hospital Name</th><th>Code</th><th>ICU Capacity</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="hospitalTbody">
+              <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading hospitals…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -371,26 +397,30 @@ function showSection(name) {
 
 async function loadDashboard() {
   try {
-    const res  = await authFetch(`${API}/api/admin/dashboard`);
+    const res  = await authFetch(`${API}/api/admin/dashboard/summary`);
     const data = await res.json();
-    document.getElementById('statUsers').textContent     = data.totalUsers     || '—';
-    document.getElementById('statHospitals').textContent = data.totalHospitals || '—';
-    document.getElementById('statAlerts').textContent    = data.totalAlerts    || '—';
-  } catch {
-    document.getElementById('statUsers').textContent     = '3';
-    document.getElementById('statHospitals').textContent = '4';
-    document.getElementById('statAlerts').textContent    = '12';
-    document.getElementById('statAudit').textContent     = '48';
+    
+    // Smooth update effect
+    updateValue('statUsers',     data.totalUsers);
+    updateValue('statHospitals', data.totalHospitals);
+    updateValue('statAlerts',    data.totalAlerts);
+    updateValue('statDoctors',   data.totalDoctors);
+    
+    document.getElementById('icuStatSub').textContent    = `${data.icuAvailable || 0} ICU beds available`;
+    document.getElementById('alertStatSub').textContent  = `${data.pendingAlerts || 0} pending review`;
+    document.getElementById('doctorStatSub').textContent = `${data.doctorsOnDuty || 0} doctors on duty`;
+    document.getElementById('lastRefresh').textContent   = new Date().toLocaleTimeString('en-IN');
+  } catch (e) {
+    console.error("Dashboard update failed", e);
   }
-
-  try {
-    const res  = await authFetch(`${API}/api/admin/audit/verify`);
-    const data = await res.json();
-    document.getElementById('statAudit').textContent = data.totalEntries || '—';
-  } catch {}
 
   loadHospitalOverview();
   loadRecentActivity();
+}
+
+function updateValue(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val !== undefined ? val : '—';
 }
 
 async function loadHospitalOverview() {
@@ -535,19 +565,59 @@ async function loadHospitals() {
   try {
     const res  = await authFetch(`${API}/api/admin/hospitals`);
     const data = await res.json();
-    document.getElementById('hospitalList').innerHTML = data.map(h => `
-      <div class="hospital-card">
-        <div class="hospital-info">
-          <div class="name">${h.name}</div>
-          <div class="meta">Code: ${h.code} | ICU: ${h.totalIcuBeds} | Sepsis Mortality: ${h.sepsisMortalityRate}% | ${h.isLevel1Trauma?'✓ Level 1 Trauma':''}</div>
-        </div>
-        <div class="hospital-stats">
-          <div class="hs-item"><div class="val" style="color:var(--accent2)">${h.totalIcuBeds-h.occupiedBeds}</div><div class="lbl">ICU Free</div></div>
-          <div class="hs-item"><div class="val" style="color:var(--muted2)">${h.sepsisMortalityRate}%</div><div class="lbl">Mortality</div></div>
-          <div class="hs-item"><div class="val" style="color:var(--accent)">${h.isActive?'ON':'OFF'}</div><div class="lbl">Status</div></div>
-        </div>
-      </div>`).join('');
-  } catch { document.getElementById('hospitalList').innerHTML = demoHospitals().map(h=>`<div class="hospital-card"><div class="hospital-info"><div class="name">${h.name}</div><div class="meta">${h.code} | Demo data</div></div></div>`).join(''); }
+    const tbody = document.getElementById('hospitalTbody');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">No hospitals registered yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(h => `
+      <tr>
+        <td style="font-family:var(--mono)">#${h.hospitalId}</td>
+        <td style="font-weight:600">${h.name}</td>
+        <td style="font-family:var(--mono)">${h.code}</td>
+        <td style="font-family:var(--mono)">${h.occupiedBeds}/${h.totalIcuBeds} Beds</td>
+        <td><span class="status-badge sb-active">ONLINE</span></td>
+        <td><button class="btn-sm btn-danger" onclick="deleteHospital(${h.hospitalId})">Unregister</button></td>
+      </tr>`).join('');
+  } catch (e) {
+    console.error("Load hospitals failed", e);
+  }
+}
+
+async function registerHospital() {
+  const payload = {
+    name:           document.getElementById('hName').value.trim(),
+    location:       document.getElementById('hLoc').value.trim(),
+    contact:        document.getElementById('hContact').value.trim(),
+    totalIcuBeds:   parseInt(document.getElementById('hIcu').value) || 0,
+    isLevel1Trauma: document.getElementById('hLevel').value === 'true'
+  };
+  if (!payload.name) { alert('Hospital name is required'); return; }
+  try {
+    const res = await authFetch(`${API}/api/admin/hospitals`, { method:'POST', body: JSON.stringify(payload) });
+    if (res.ok) {
+      document.getElementById('hName').value = '';
+      document.getElementById('hLoc').value = '';
+      document.getElementById('hContact').value = '';
+      loadHospitals();
+      loadDashboard();
+    }
+  } catch (e) {
+    alert('Registration failed');
+  }
+}
+
+async function deleteHospital(id) {
+  if (!confirm('Are you sure you want to unregister this hospital? This action cannot be undone.')) return;
+  try {
+    const res = await authFetch(`${API}/api/admin/hospitals/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      loadHospitals();
+      loadDashboard();
+    }
+  } catch (e) {
+    alert('Deletion failed');
+  }
 }
 
 async function loadAudit() {
@@ -600,6 +670,7 @@ function demoHospitals(){ return [{name:'Bangalore Medical College & RI',code:'B
 
 loadDashboard();
 updateEntityPlaceholder();
+setInterval(loadDashboard, 15000); // Auto-refresh every 15s
 </script>
 </body>
 </html>

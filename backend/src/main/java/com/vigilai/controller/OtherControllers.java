@@ -53,6 +53,20 @@ class PatientController {
     public ResponseEntity<?> dashboard(@RequestParam String clinicId) {
         return ResponseEntity.ok(patientService.getDashboardStats(clinicId));
     }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('CLINIC','ADMIN')")
+    public ResponseEntity<?> searchPatients(@RequestParam String clinicId, @RequestParam String query) {
+        return ResponseEntity.ok(patientRepo.searchPatients(clinicId, query));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CLINIC','ADMIN')")
+    public ResponseEntity<?> deletePatient(@PathVariable Long id) {
+        if (!patientRepo.existsById(id)) return ResponseEntity.notFound().build();
+        patientRepo.deleteById(id);
+        return ResponseEntity.ok(Map.of("message", "Patient deleted successfully", "id", id));
+    }
 }
 
 // ── Hospital Controller ───────────────────────────────────────────────────
@@ -127,6 +141,23 @@ class HospitalController {
             return ResponseEntity.ok((Object) result);
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
+
+    @PostMapping("/doctors")
+    @PreAuthorize("hasAnyRole('HOSPITAL','ADMIN')")
+    public ResponseEntity<?> addDoctor(@RequestBody Doctor doctor) {
+        if (doctor.getHospitalId() == null) return ResponseEntity.badRequest().body("hospitalId is required");
+        doctor.setIsAvailable(true);
+        Doctor saved = doctorRepo.save(doctor);
+        return ResponseEntity.ok(saved);
+    }
+
+    @DeleteMapping("/doctors/{id}")
+    @PreAuthorize("hasAnyRole('HOSPITAL','ADMIN')")
+    public ResponseEntity<?> deleteDoctor(@PathVariable Long id) {
+        if (!doctorRepo.existsById(id)) return ResponseEntity.notFound().build();
+        doctorRepo.deleteById(id);
+        return ResponseEntity.ok(Map.of("message", "Doctor deleted successfully", "id", id));
+    }
 }
 
 // ── Admin Controller ──────────────────────────────────────────────────────
@@ -140,15 +171,55 @@ class AdminController {
     private final AlertRepository    alertRepo;
     private final AuditLogService    auditLog;
 
-    @GetMapping("/dashboard")
+    @GetMapping("/dashboard/summary")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> adminDashboard() {
         Map<String, Object> resp = new LinkedHashMap<>();
-        resp.put("totalHospitals", hospitalRepo.count());
-        resp.put("totalUsers",     userRepo.count());
-        resp.put("totalAlerts",    alertRepo.count());
+        
+        long totalUsers     = userRepo.count();
+        long totalHospitals = hospitalRepo.count();
+        long totalPatients  = patientRepo.count();
+        long totalDoctors   = doctorRepo.count();
+        long totalAlerts    = alertRepo.count();
+        long activeAlerts   = alertRepo.countByStatus("NEW");
+        long pendingAlerts  = alertRepo.countByClinicianDecision("PENDING");
+        
+        // ICU & Doctor Availability Aggregates
+        Integer icuTotal    = hospitalRepo.sumTotalIcuBeds();
+        Integer icuOccupied = hospitalRepo.sumOccupiedBeds();
+        long docsOnDuty     = doctorRepo.countByIsAvailableTrue();
+
+        resp.put("totalUsers",     totalUsers);
+        resp.put("totalHospitals", totalHospitals);
+        resp.put("totalPatients",  totalPatients);
+        resp.put("totalDoctors",   totalDoctors);
+        resp.put("totalAlerts",    totalAlerts);
+        resp.put("activeAlerts",   activeAlerts);
+        resp.put("pendingAlerts",  pendingAlerts);
+        resp.put("icuAvailable",   (icuTotal != null ? icuTotal : 0) - (icuOccupied != null ? icuOccupied : 0));
+        resp.put("doctorsOnDuty",  docsOnDuty);
         resp.put("systemStatus",   "OPERATIONAL");
+        resp.put("lastUpdated",    java.time.LocalDateTime.now());
+        
         return ResponseEntity.ok(resp);
+    }
+
+    @PostMapping("/hospitals")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createHospital(@RequestBody Hospital hospital) {
+        if (hospital.getCode() == null) hospital.setCode("HOSP-" + System.currentTimeMillis() % 10000);
+        Hospital saved = hospitalRepo.save(hospital);
+        auditLog.logAction("HOSPITAL_REGISTERED", "ADMIN", String.valueOf(saved.getHospitalId()), "ADMIN_USER", null, saved.getName());
+        return ResponseEntity.ok(saved);
+    }
+
+    @DeleteMapping("/hospitals/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteHospital(@PathVariable Long id) {
+        if (!hospitalRepo.existsById(id)) return ResponseEntity.notFound().build();
+        hospitalRepo.deleteById(id);
+        auditLog.logAction("HOSPITAL_DELETED", "ADMIN", String.valueOf(id), "ADMIN_USER", null, "ID: " + id);
+        return ResponseEntity.ok(Map.of("message", "Hospital unregistered successfully", "id", id));
     }
 
     @GetMapping("/hospitals")

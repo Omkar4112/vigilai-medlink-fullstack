@@ -121,6 +121,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 .doctor-spec{font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:12px}
 .toggle-avail{font-size:11px;font-family:var(--mono);padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted2);width:100%;transition:all .15s}
 .toggle-avail:hover{border-color:var(--blue);color:var(--blue)}
+.btn-doc-del { position:absolute; top:12px; left:12px; background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; opacity:0; transition:opacity .2s; }
+.doctor-card:hover .btn-doc-del { opacity:1; }
+.btn-doc-del:hover { color:var(--red); }
 
 /* ETA tracker */
 .eta-card{background:linear-gradient(135deg,rgba(10,132,255,.08),rgba(0,199,190,.05));border:1px solid rgba(10,132,255,.15);border-radius:14px;padding:20px;text-align:center;margin-bottom:12px}
@@ -287,13 +290,28 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex
 
   <!-- Doctors -->
   <div id="section-doctors" style="display:none">
-    <div class="panel">
-      <div class="panel-header">
-        <h3>👨‍⚕️ Doctor Availability</h3>
-        <span id="doctorBadge" style="font-size:12px;font-family:var(--mono);color:var(--muted)"></span>
+    <div style="display:grid; grid-template-columns: 1fr 3fr; gap: 20px;">
+      <div class="panel">
+        <div class="panel-header"><h3>➕ Add Doctor</h3></div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label style="font-size:10px;font-family:var(--mono);color:var(--muted);display:block;margin-bottom:6px">FULL NAME</label>
+          <input type="text" id="docName" placeholder="Dr. Name" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px;outline:none">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label style="font-size:10px;font-family:var(--mono);color:var(--muted);display:block;margin-bottom:6px">SPECIALTY</label>
+          <input type="text" id="docSpec" placeholder="e.g. Cardiology" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px;outline:none">
+        </div>
+        <button class="btn-approve" style="width:100%;margin-top:8px" onclick="addDoctor()">Register Doctor</button>
       </div>
-      <div class="doctor-grid" id="doctorGrid">
-        <div class="empty-state"><div class="empty-icon">👨‍⚕️</div>Loading doctors…</div>
+      
+      <div class="panel">
+        <div class="panel-header">
+          <h3>👨‍⚕️ Medical Staff</h3>
+          <span id="doctorBadge" style="font-size:12px;font-family:var(--mono);color:var(--muted)"></span>
+        </div>
+        <div class="doctor-grid" id="doctorGrid">
+          <div class="empty-state"><div class="empty-icon">👨‍⚕️</div>Loading doctors…</div>
+        </div>
       </div>
     </div>
   </div>
@@ -546,15 +564,51 @@ function renderDoctors(data) {
   const grid = document.getElementById('doctorGrid');
   const avail = data.filter(d=>d.isAvailable).length;
   document.getElementById('doctorBadge').textContent = `${avail}/${data.length} available`;
+  if (!data.length) { grid.innerHTML = '<div class="empty-state">No doctors registered</div>'; return; }
   grid.innerHTML = data.map(d => `
     <div class="doctor-card">
+      <button class="btn-doc-del" onclick="deleteDoctor(${d.doctorId})" title="Remove Doctor">🗑️</button>
       <div class="doctor-status ${d.isAvailable ? 'available' : 'busy'}"></div>
-      <div class="doctor-name">${d.fullName}</div>
-      <div class="doctor-spec">${d.specialty || 'General'}</div>
+      <div class="doctor-name" style="margin-left:20px">${d.fullName}</div>
+      <div class="doctor-spec" style="margin-left:20px">${d.specialty || 'General Practice'}</div>
       <button class="toggle-avail" onclick="toggleDoctor(${d.doctorId}, ${!d.isAvailable})">
-        ${d.isAvailable ? '🟢 Available — Mark Busy' : '🔴 Busy — Mark Available'}
+        ${d.isAvailable ? '🟢 Mark as Busy' : '🔴 Mark as Available'}
       </button>
     </div>`).join('');
+}
+
+async function addDoctor() {
+  const fullName = document.getElementById('docName').value.trim();
+  const specialty = document.getElementById('docSpec').value.trim();
+  if (!fullName) { alert('Doctor name is required'); return; }
+  
+  try {
+    const res = await authFetch(`${API}/api/hospital/doctors`, {
+      method: 'POST',
+      body: JSON.stringify({ fullName, specialty, hospitalId: parseInt(hospitalId) })
+    });
+    if (res.ok) {
+      document.getElementById('docName').value = '';
+      document.getElementById('docSpec').value = '';
+      loadDoctors();
+      showToast('✅ Doctor Added', `${fullName} has been registered`, 'high');
+    }
+  } catch (e) {
+    alert('Failed to add doctor');
+  }
+}
+
+async function deleteDoctor(id) {
+  if (!confirm('Are you sure you want to remove this doctor from the system?')) return;
+  try {
+    const res = await authFetch(`${API}/api/hospital/doctors/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      loadDoctors();
+      showToast('🗑️ Removed', 'Doctor record deleted', 'low');
+    }
+  } catch (e) {
+    alert('Delete failed');
+  }
 }
 
 async function toggleDoctor(id, available) {

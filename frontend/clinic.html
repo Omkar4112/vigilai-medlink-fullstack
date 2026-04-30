@@ -119,6 +119,27 @@ tr:hover td{background:rgba(0,212,255,.02)}
 .offline-queue{background:rgba(255,199,0,.06);border:1px solid rgba(255,199,0,.2);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:20px;display:none}
 .offline-queue .icon{font-size:20px}
 .offline-queue p{font-size:12px;font-family:var(--mono);color:var(--yellow)}
+
+/* Enhanced Styles */
+.search-box { display: flex; gap: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; padding: 2px 8px; }
+.search-box input { background: none; border: none; color: var(--text); font-family: var(--sans); font-size: 12px; padding: 6px; outline: none; width: 180px; }
+.search-box button { background: none; border: none; color: var(--muted); cursor: pointer; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 450px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); overflow: hidden; animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.modal-body { padding: 24px; font-size: 14px; color: var(--text); line-height: 1.6; }
+.modal-body b { color: var(--accent); }
+.modal-footer { padding: 16px 20px; background: rgba(0,0,0,0.2); display: flex; justify-content: flex-end; gap: 12px; }
+.btn-delete { background: rgba(255,59,92,0.1); border: 1px solid rgba(255,59,92,0.3); color: var(--red); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 700; }
+.btn-delete:hover { background: var(--red); color: #fff; }
+.btn-close { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 11px; }
+
+tr[onclick] { cursor: pointer; }
+tr[onclick]:hover td { background: rgba(0,212,255,0.05) !important; }
+
 </style>
 </head>
 <body>
@@ -289,8 +310,15 @@ tr:hover td{background:rgba(0,212,255,.02)}
   <div id="section-patients" style="display:none">
     <div class="panel">
       <div class="panel-header">
-        <h3>👥 Registered Patients</h3>
-        <span class="badge" id="patientBadge">0 patients</span>
+        <h3>👥 Patient Directory</h3>
+        <div style="display:flex; gap:12px; align-items:center">
+          <div class="search-box">
+            <input type="text" id="patientSearch" placeholder="Search by name or phone..." onkeyup="if(event.key==='Enter') searchPatients()">
+            <button onclick="searchPatients()">🔍</button>
+          </div>
+          <span class="badge" id="patientBadge">0 patients</span>
+          <button class="btn-sm" onclick="loadPatients()">↻ Refresh</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table>
@@ -354,6 +382,23 @@ tr:hover td{background:rgba(0,212,255,.02)}
     </div>
   </div>
 </main>
+
+<!-- Patient Detail Modal -->
+<div class="modal-overlay" id="patientModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalName">Patient Details</h3>
+      <button class="logout-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- Injected by JS -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn-delete" id="deletePatientBtn">Delete Patient Permanently</button>
+      <button class="btn-close" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const API = "https://backend-ysf3.onrender.com";
@@ -518,21 +563,92 @@ async function loadPatients() {
   try {
     const res  = await authFetch(`${API}/api/clinic/patients?clinicId=${encodeURIComponent(clinicId)}`);
     patients   = await res.json();
-    const tbody = document.getElementById('patientTableBody');
-    document.getElementById('patientBadge').textContent = `${patients.length} patients`;
-    document.getElementById('statPatients').textContent = patients.length;
-    tbody.innerHTML = patients.map(p => `
-      <tr>
-        <td style="font-family:var(--mono)">#${p.patientId}</td>
-        <td><b>${p.fullName || '—'}</b></td>
-        <td style="font-family:var(--mono)">${p.phoneNumber}</td>
-        <td style="font-family:var(--mono)">${p.age}</td>
-        <td><span class="age-badge age-${ageClass(p.age)}">${ageLabel(p.age)}</span></td>
-        <td style="color:var(--muted);font-size:12px">${(p.medicalHistory||'—').substring(0,30)}</td>
-        <td><button class="btn-sm" onclick="fillFromPatient(${p.patientId})">Submit Vitals</button></td>
-      </tr>
-    `).join('');
+    renderPatients(patients);
   } catch { patients = demoPatients(); renderDemoPatients(); }
+}
+
+async function searchPatients() {
+  const query = document.getElementById('patientSearch').value.trim();
+  if (!query) { loadPatients(); return; }
+  try {
+    const res = await authFetch(`${API}/api/clinic/patients/search?clinicId=${encodeURIComponent(clinicId)}&query=${encodeURIComponent(query)}`);
+    const results = await res.json();
+    renderPatients(results);
+  } catch (e) {
+    console.error('Search failed', e);
+  }
+}
+
+function renderPatients(data) {
+  const tbody = document.getElementById('patientTableBody');
+  document.getElementById('patientBadge').textContent = `${data.length} patients`;
+  document.getElementById('statPatients').textContent = data.length;
+  
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);font-family:var(--mono)">No patients found</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = data.map(p => `
+    <tr onclick="viewPatient(${p.patientId})">
+      <td style="font-family:var(--mono)">#${p.patientId}</td>
+      <td><b>${p.fullName || '—'}</b></td>
+      <td style="font-family:var(--mono)">${p.phoneNumber}</td>
+      <td style="font-family:var(--mono)">${p.age}</td>
+      <td><span class="age-badge age-${ageClass(p.age)}">${ageLabel(p.age)}</span></td>
+      <td style="color:var(--muted);font-size:12px">${(p.medicalHistory||'—').substring(0,30)}${(p.medicalHistory||'').length>30?'...':''}</td>
+      <td><button class="btn-sm" onclick="event.stopPropagation(); fillFromPatient(${p.patientId})">Submit Vitals</button></td>
+    </tr>
+  `).join('');
+}
+
+async function viewPatient(id) {
+  try {
+    const res = await authFetch(`${API}/api/clinic/patients/${id}`);
+    const data = await res.json();
+    const p = data.patient;
+    
+    document.getElementById('modalName').textContent = p.fullName || 'Patient Details';
+    document.getElementById('modalBody').innerHTML = `
+      <div style="margin-bottom:16px">
+        <p><b>Patient ID:</b> #${p.patientId}</p>
+        <p><b>Age/Gender:</b> ${p.age}y / ${p.gender || '—'}</p>
+        <p><b>Phone:</b> ${p.phoneNumber}</p>
+        <p><b>Age Group:</b> <span class="age-badge age-${ageClass(p.age)}">${data.ageGroup}</span></p>
+      </div>
+      <div style="margin-bottom:16px">
+        <p><b>Medical History:</b></p>
+        <p style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; margin-top:4px; font-family:var(--mono); font-size:12px">${p.medicalHistory || 'No history recorded'}</p>
+      </div>
+      <p style="font-size:11px; color:var(--muted)">Registered on ${new Date(p.createdAt).toLocaleString()}</p>
+    `;
+    
+    const delBtn = document.getElementById('deletePatientBtn');
+    delBtn.onclick = () => deletePatient(p.patientId);
+    
+    document.getElementById('patientModal').classList.add('show');
+  } catch (e) {
+    console.error('View patient failed', e);
+  }
+}
+
+function closeModal() {
+  document.getElementById('patientModal').classList.remove('show');
+}
+
+async function deletePatient(id) {
+  if (!confirm('Are you sure? This will delete the patient and all their medical alerts permanently.')) return;
+  try {
+    const res = await authFetch(`${API}/api/clinic/patients/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      closeModal();
+      loadPatients();
+    } else {
+      alert('Failed to delete patient.');
+    }
+  } catch (e) {
+    console.error('Delete error', e);
+  }
 }
 
 async function loadAlerts() {

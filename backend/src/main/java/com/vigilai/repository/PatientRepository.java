@@ -15,4 +15,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     List<Patient> findByClinicId(String clinicId);
     boolean existsByClinicIdAndPhoneNumber(String clinicId, String phoneNumber);
     long countByClinicId(String clinicId);
+
+    @Query("SELECT p FROM Patient p WHERE p.clinicId = :clinicId AND " +
+           "(LOWER(p.fullName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "p.phoneNumber LIKE CONCAT('%', :query, '%'))")
+    List<Patient> searchPatients(@Param("clinicId") String clinicId, @Param("query") String query);
 }
