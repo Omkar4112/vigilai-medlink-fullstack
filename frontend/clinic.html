@@ -754,18 +754,30 @@ updateQueueBadge();
 
 async function loadDashboardStats() {
   try {
+    // Clinic-specific stats (patients, vitals today)
     const res  = await authFetch(`${API}/api/clinic/patients/dashboard?clinicId=${encodeURIComponent(clinicId)}`);
-    const data = await res.json();
-    document.getElementById('statPatients').textContent = data.totalPatients !== undefined ? data.totalPatients : '0';
-    document.getElementById('statVitals').textContent   = data.vitalsToday !== undefined ? data.vitalsToday : '0';
-    document.getElementById('statSync').textContent     = data.pendingSync !== undefined ? data.pendingSync : offlineQueue.length;
-  } catch {}
+    if (res.ok) {
+      const data = await res.json();
+      document.getElementById('statPatients').textContent = data.totalPatients ?? 0;
+      document.getElementById('statVitals').textContent   = data.vitalsToday   ?? 0;
+      document.getElementById('statSync').textContent     = data.pendingSync   ?? offlineQueue.length;
+    }
+  } catch (e) { console.warn('Clinic stats failed:', e.message); }
+
+  try {
+    // System-wide active alerts from unified summary
+    const res2 = await authFetch(`${API}/api/dashboard/summary`);
+    if (res2.ok) {
+      const d = await res2.json();
+      document.getElementById('statAlerts').textContent = d.pendingAlerts ?? 0;
+    }
+  } catch (e) { console.warn('Summary fetch failed:', e.message); }
 }
 
 // Load dashboard stats
 loadDashboardStats();
-loadAlerts(); // Populate active alerts count
-setInterval(loadDashboardStats, 30000); // Refresh every 30s
+loadAlerts();
+setInterval(loadDashboardStats, 10000); // Refresh every 10s
 </script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -21,4 +22,8 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
     long countByStatus(String status);
     long countByClinicianDecision(String decision);
+
+    @Query("SELECT COUNT(a) FROM Alert a WHERE a.clinicianDecision = 'APPROVED' AND a.dispatchedAt >= :since")
+    long countDispatchedSince(@Param("since") LocalDateTime since);
 }
+

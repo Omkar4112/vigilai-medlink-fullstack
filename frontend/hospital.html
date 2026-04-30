@@ -346,40 +346,43 @@ function showSection(name) {
 async function loadDashboard() {
   try {
     const res  = await authFetch(`${API}/api/hospital/dashboard?hospitalId=${hospitalId}`);
+    if (!res.ok) throw new Error('API error ' + res.status);
     const data = await res.json();
     const h    = data.hospital || {};
-    document.getElementById('hospitalName').textContent = h.name || 'Hospital Dashboard';
-    document.getElementById('hospitalSub').textContent  = `// ${h.code || 'H-' + hospitalId} | ICU Capacity: ${data.icuTotal || '—'}`;
-    document.getElementById('statPending').textContent   = data.pendingAlerts   || 0;
-    document.getElementById('statDispatched').textContent= data.dispatchedAlerts|| 0;
-    document.getElementById('statDoctors').textContent   = data.availableDoctors || '—';
 
-    const avail = data.icuAvailable || 0;
-    const total = data.icuTotal     || 1;
-    const pct   = ((total - avail) / total * 100).toFixed(0);
+    document.getElementById('hospitalName').textContent  = h.name || 'Hospital Dashboard';
+    document.getElementById('hospitalSub').textContent   = `// ${h.code || 'H-' + hospitalId} | ICU Capacity: ${data.icuTotal ?? '—'}`;
+    document.getElementById('statPending').textContent   = data.pendingAlerts    ?? 0;
+    document.getElementById('statDispatched').textContent= data.dispatchedAlerts ?? 0;
+    document.getElementById('statDoctors').textContent   = data.availableDoctors ?? 0;
+    document.getElementById('statApproved').textContent  = data.approvedAlerts   ?? 0;
+
+    const avail = data.icuAvailable ?? 0;
+    const total = data.icuTotal     ?? 0;
+    const pct   = total > 0 ? ((total - avail) / total * 100).toFixed(0) : 0;
     document.getElementById('statICU').textContent    = avail;
-    document.getElementById('statICUSub').textContent = `of ${total} total`;
+    document.getElementById('statICUSub').textContent = `of ${total} total (${pct}% occupied)`;
     document.getElementById('icuFill').style.width    = pct + '%';
     document.getElementById('icuFill').style.background = pct > 80 ? 'var(--red)' : pct > 60 ? 'var(--orange)' : 'var(--green)';
-  } catch {
-    // demo
-    document.getElementById('hospitalName').textContent = 'BMCRI Hospital (Demo)';
-    document.getElementById('statPending').textContent  = 3;
-    document.getElementById('statICU').textContent      = 12;
-    document.getElementById('statICUSub').textContent   = 'of 40 total';
-    document.getElementById('statDoctors').textContent  = 5;
-    document.getElementById('statDispatched').textContent = 8;
-    document.getElementById('icuFill').style.width = '70%';
-    document.getElementById('icuFill').style.background = 'var(--orange)';
+  } catch (e) {
+    console.warn('Dashboard load failed:', e.message);
+    ['statPending','statICU','statDoctors','statDispatched','statApproved'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = 0;
+    });
+    document.getElementById('statICUSub').textContent = 'of 0 total';
+    document.getElementById('hospitalSub').textContent = '// Unable to reach backend';
   }
 }
 
 async function loadAlerts() {
   try {
     const res  = await authFetch(`${API}/api/hospital/alerts`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     allAlerts  = await res.json();
-  } catch {
-    allAlerts = demoAlerts();
+  } catch (e) {
+    console.warn('Alerts load failed:', e.message);
+    allAlerts = []; // Never show fake demo alerts
   }
   renderAlerts();
   const pending = allAlerts.filter(a => a.clinicianDecision === 'PENDING').length;
@@ -689,7 +692,8 @@ function demoDoctors() {
 loadDashboard();
 loadAlerts();
 connectWebSocket();
-setInterval(loadAlerts, 30000); // poll every 30s
+setInterval(loadAlerts,    30000); // poll alerts every 30s
+setInterval(loadDashboard, 10000); // refresh stats every 10s
 </script>
 </body>
 </html>

@@ -182,26 +182,31 @@ tr:hover td{background:rgba(200,255,0,.02)}
 
   <!-- Overview -->
   <div id="section-overview">
-    <div class="stats">
+    <div class="stats" style="grid-template-columns:repeat(5,1fr)">
       <div class="stat-card s1">
         <div class="stat-label">Total Users</div>
-        <div class="stat-value" id="statUsers" style="color:var(--accent)">—</div>
+        <div class="stat-value" id="statUsers" style="color:var(--accent)">0</div>
         <div class="stat-sub">registered accounts</div>
       </div>
       <div class="stat-card s2">
         <div class="stat-label">Active Hospitals</div>
-        <div class="stat-value" id="statHospitals" style="color:#4da6ff">—</div>
+        <div class="stat-value" id="statHospitals" style="color:#4da6ff">0</div>
         <div class="stat-sub" id="icuStatSub">0 ICU beds available</div>
       </div>
       <div class="stat-card s3">
         <div class="stat-label">System Alerts</div>
-        <div class="stat-value" id="statAlerts" style="color:var(--red)">—</div>
+        <div class="stat-value" id="statAlerts" style="color:var(--red)">0</div>
         <div class="stat-sub" id="alertStatSub">0 pending review</div>
       </div>
       <div class="stat-card s4">
         <div class="stat-label">Medical Staff</div>
-        <div class="stat-value" id="statDoctors" style="color:var(--teal)">—</div>
+        <div class="stat-value" id="statDoctors" style="color:var(--teal)">0</div>
         <div class="stat-sub" id="doctorStatSub">0 doctors on duty</div>
+      </div>
+      <div class="stat-card" style="border-bottom:2px solid var(--yellow)">
+        <div class="stat-label">Vitals Today</div>
+        <div class="stat-value" id="statVitalsToday" style="color:var(--yellow)">0</div>
+        <div class="stat-sub" id="vitalsStatSub">0 dispatched today</div>
       </div>
     </div>
 
@@ -397,23 +402,25 @@ function showSection(name) {
 
 async function loadDashboard() {
   try {
-    const res  = await authFetch(`${API}/api/admin/dashboard/summary`);
+    const res  = await authFetch(`${API}/api/dashboard/summary`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    
-    // Smooth update effect
-    updateValue('statUsers',     data.totalUsers);
-    updateValue('statHospitals', data.totalHospitals);
-    updateValue('statAlerts',    data.totalAlerts);
-    updateValue('statDoctors',   data.totalDoctors);
-    
-    document.getElementById('icuStatSub').textContent    = `${data.icuAvailable || 0} ICU beds available`;
-    document.getElementById('alertStatSub').textContent  = `${data.pendingAlerts || 0} pending review`;
-    document.getElementById('doctorStatSub').textContent = `${data.doctorsOnDuty || 0} doctors on duty`;
+
+    updateValue('statUsers',        data.totalUsers);
+    updateValue('statHospitals',    data.totalHospitals);
+    updateValue('statAlerts',       data.totalAlerts);
+    updateValue('statDoctors',      data.totalDoctors);
+    updateValue('statVitalsToday',  data.vitalsToday);
+
+    document.getElementById('icuStatSub').textContent    = `${data.icuAvailable ?? 0} ICU beds available`;
+    document.getElementById('alertStatSub').textContent  = `${data.pendingAlerts ?? 0} pending · ${data.dispatchedToday ?? 0} dispatched today`;
+    document.getElementById('doctorStatSub').textContent = `${data.doctorsOnDuty ?? 0} on duty now`;
+    document.getElementById('vitalsStatSub').textContent = `${data.dispatchedToday ?? 0} dispatched today`;
     document.getElementById('lastRefresh').textContent   = new Date().toLocaleTimeString('en-IN');
   } catch (e) {
-    console.error("Dashboard update failed", e);
+    console.warn('Dashboard failed:', e.message);
+    ['statUsers','statHospitals','statAlerts','statDoctors','statVitalsToday'].forEach(id => updateValue(id, 0));
   }
-
   loadHospitalOverview();
   loadRecentActivity();
 }

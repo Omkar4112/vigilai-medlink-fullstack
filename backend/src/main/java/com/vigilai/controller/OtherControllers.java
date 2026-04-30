@@ -93,6 +93,10 @@ class HospitalController {
         int occ   = h.getOccupiedBeds() != null ? h.getOccupiedBeds() : 0;
         int avail = Math.max(0, total - occ);
 
+        List<Alert>  approved   = alertRepo.findByClinicianDecisionOrderByAlertTimestampDesc("APPROVED");
+        java.time.LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
+        long dispatchedToday = alertRepo.countDispatchedSince(startOfDay);
+
         // Use LinkedHashMap to avoid Map.of() 10-key limit
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("hospital",         h);
@@ -102,7 +106,8 @@ class HospitalController {
         resp.put("totalDoctors",     doctorRepo.findByHospitalId(hospitalId).size());
         resp.put("availableDoctors", onDuty.size());
         resp.put("pendingAlerts",    pending.size());
-        resp.put("dispatchedAlerts", dispatched.size());
+        resp.put("dispatchedAlerts", dispatchedToday);
+        resp.put("approvedAlerts",   approved.size());
         resp.put("recentAlerts",     dispatched.subList(0, Math.min(10, dispatched.size())));
         return ResponseEntity.ok(resp);
     }
@@ -173,11 +178,11 @@ class AdminController {
     private final DoctorRepository   doctorRepo;
     private final AuditLogService    auditLog;
 
-    @GetMapping("/dashboard/summary")
+    @GetMapping({"/dashboard/summary", "/dashboard"})
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> adminDashboard() {
         Map<String, Object> resp = new LinkedHashMap<>();
-        
+
         long totalUsers     = userRepo.count();
         long totalHospitals = hospitalRepo.count();
         long totalPatients  = patientRepo.count();
@@ -185,24 +190,30 @@ class AdminController {
         long totalAlerts    = alertRepo.count();
         long activeAlerts   = alertRepo.countByStatus("NEW");
         long pendingAlerts  = alertRepo.countByClinicianDecision("PENDING");
-        
-        // ICU & Doctor Availability Aggregates
-        Integer icuTotal    = hospitalRepo.sumTotalIcuBeds();
-        Integer icuOccupied = hospitalRepo.sumOccupiedBeds();
         long docsOnDuty     = doctorRepo.countByIsAvailableTrue();
 
-        resp.put("totalUsers",     totalUsers);
-        resp.put("totalHospitals", totalHospitals);
-        resp.put("totalPatients",  totalPatients);
-        resp.put("totalDoctors",   totalDoctors);
-        resp.put("totalAlerts",    totalAlerts);
-        resp.put("activeAlerts",   activeAlerts);
-        resp.put("pendingAlerts",  pendingAlerts);
-        resp.put("icuAvailable",   (icuTotal != null ? icuTotal : 0) - (icuOccupied != null ? icuOccupied : 0));
-        resp.put("doctorsOnDuty",  docsOnDuty);
-        resp.put("systemStatus",   "OPERATIONAL");
-        resp.put("lastUpdated",    java.time.LocalDateTime.now());
-        
+        // Dispatched today — approved alerts since midnight
+        java.time.LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
+        long dispatchedToday = alertRepo.countDispatchedSince(startOfDay);
+
+        // ICU aggregates across all hospitals
+        Integer icuTotal    = hospitalRepo.sumTotalIcuBeds();
+        Integer icuOccupied = hospitalRepo.sumOccupiedBeds();
+        int icuAvailable    = (icuTotal != null ? icuTotal : 0) - (icuOccupied != null ? icuOccupied : 0);
+
+        resp.put("totalUsers",      totalUsers);
+        resp.put("totalHospitals",  totalHospitals);
+        resp.put("totalPatients",   totalPatients);
+        resp.put("totalDoctors",    totalDoctors);
+        resp.put("totalAlerts",     totalAlerts);
+        resp.put("activeAlerts",    activeAlerts);
+        resp.put("pendingAlerts",   pendingAlerts);
+        resp.put("icuAvailable",    Math.max(0, icuAvailable));
+        resp.put("doctorsOnDuty",   docsOnDuty);
+        resp.put("dispatchedToday", dispatchedToday);
+        resp.put("systemStatus",    "OPERATIONAL");
+        resp.put("lastUpdated",     java.time.LocalDateTime.now().toString());
+
         return ResponseEntity.ok(resp);
     }
 
