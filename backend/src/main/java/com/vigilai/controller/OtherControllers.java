@@ -75,7 +75,9 @@ class HospitalController {
         List<Doctor> onDuty     = doctorRepo.findByHospitalIdAndIsAvailableTrue(hospitalId);
         List<Alert>  dispatched = alertRepo.findByHospitalIdOrderByAlertTimestampDesc(hospitalId);
         List<Alert>  pending    = alertRepo.findByClinicianDecisionOrderByAlertTimestampDesc("PENDING");
-        int avail               = h.getTotalIcuBeds() - h.getOccupiedBeds();
+        int total = h.getTotalIcuBeds() != null ? h.getTotalIcuBeds() : 0;
+        int occ   = h.getOccupiedBeds() != null ? h.getOccupiedBeds() : 0;
+        int avail = Math.max(0, total - occ);
 
         // Use LinkedHashMap to avoid Map.of() 10-key limit
         Map<String, Object> resp = new LinkedHashMap<>();

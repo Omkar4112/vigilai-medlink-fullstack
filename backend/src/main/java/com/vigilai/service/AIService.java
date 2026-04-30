@@ -39,7 +39,7 @@ public class AIService {
         if (req.getSystolic_bp()      < 100)  f++;
         if (req.getSpo2()             < 92)   f++;
         double score = Math.min(f * 0.18, 1.0);
-        String level = score > 0.8 ? "CRITICAL" : score > 0.6 ? "HIGH" : score > 0.3 ? "MEDIUM" : "LOW";
+        String level = score >= 0.8 ? "CRITICAL" : score >= 0.6 ? "HIGH" : score >= 0.3 ? "MEDIUM" : "LOW";
         AIPredictionResponse r = new AIPredictionResponse();
         r.setRisk_score(score); r.setRisk_level(level);
         r.setSource("RULE_ENGINE_FALLBACK"); r.setConfidence(0.75);

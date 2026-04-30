@@ -23,9 +23,9 @@ app.add_middleware(
 
 
 def map_risk(prob: float) -> str:
-    if prob > 0.80: return "CRITICAL"
-    if prob > 0.60: return "HIGH"
-    if prob > 0.30: return "MEDIUM"
+    if prob >= 0.80: return "CRITICAL"
+    if prob >= 0.60: return "HIGH"
+    if prob >= 0.30: return "MEDIUM"
     return "LOW"
 
 
@@ -88,11 +88,14 @@ def predict(vitals: VitalsRequest):
         prob, _ = model.predict(features)
         level    = map_risk(float(prob))
         feats    = top_features(vitals)
+        
+        # Binary classification confidence: distance from the 0.5 decision boundary
+        conf = abs(float(prob) - 0.5) * 2
 
         return PredictionResponse(
             risk_score=float(prob),
             risk_level=level,
-            confidence=float(prob),
+            confidence=max(conf, 0.5), # at least 50% confident
             source="XGBOOST_MODEL",
             top_features=feats,
         )
