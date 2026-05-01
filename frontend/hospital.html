@@ -357,8 +357,13 @@ async function loadDashboard() {
     document.getElementById('statDoctors').textContent   = data.availableDoctors ?? 0;
     document.getElementById('statApproved').textContent  = data.approvedAlerts   ?? 0;
 
-    const avail = data.icuAvailable ?? 0;
-    const total = data.icuTotal     ?? 0;
+    let total = data.icuTotal ?? 0;
+    let occ   = data.icuOccupied ?? 0;
+    if (total === 0) {
+      total = parseInt(localStorage.getItem('vigilai_icu_total')) || 0;
+      occ   = parseInt(localStorage.getItem('vigilai_icu_occ')) || 0;
+    }
+    const avail = Math.max(0, total - occ);
     const pct   = total > 0 ? ((total - avail) / total * 100).toFixed(0) : 0;
     document.getElementById('statICU').textContent    = avail;
     document.getElementById('statICUSub').textContent = `of ${total} total (${pct}% occupied)`;
@@ -366,11 +371,15 @@ async function loadDashboard() {
     document.getElementById('icuFill').style.background = pct > 80 ? 'var(--red)' : pct > 60 ? 'var(--orange)' : 'var(--green)';
   } catch (e) {
     console.warn('Dashboard load failed:', e.message);
-    ['statPending','statICU','statDoctors','statDispatched','statApproved'].forEach(id => {
+    ['statPending','statDoctors','statDispatched','statApproved'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.textContent = 0;
     });
-    document.getElementById('statICUSub').textContent = 'of 0 total';
+    const total = parseInt(localStorage.getItem('vigilai_icu_total')) || 0;
+    const occ   = parseInt(localStorage.getItem('vigilai_icu_occ')) || 0;
+    const avail = Math.max(0, total - occ);
+    document.getElementById('statICU').textContent    = avail;
+    document.getElementById('statICUSub').textContent = `of ${total} total`;
     document.getElementById('hospitalSub').textContent = '// Unable to reach backend';
   }
 }
@@ -518,19 +527,26 @@ async function loadICU() {
   try {
     const res  = await authFetch(`${API}/api/hospital/dashboard?hospitalId=${hospitalId}`);
     const data = await res.json();
-    const avail = data.icuAvailable || 0;
-    const total = data.icuTotal     || 0;
-    const occ   = data.icuOccupied  || 0;
+    let total = data.icuTotal || 0;
+    let occ   = data.icuOccupied || 0;
+    if (total === 0) {
+      total = parseInt(localStorage.getItem('vigilai_icu_total')) || 0;
+      occ   = parseInt(localStorage.getItem('vigilai_icu_occ')) || 0;
+    }
+    const avail = Math.max(0, total - occ);
     document.getElementById('icuAvailBig').textContent = avail;
     document.getElementById('icuTotalSub').textContent = `of ${total} total`;
     document.getElementById('icuTotal').value    = total;
     document.getElementById('icuOccupied').value = occ;
     renderICUGrid(total, occ);
   } catch {
-    document.getElementById('icuAvailBig').textContent = 12;
-    document.getElementById('icuTotal').value    = 40;
-    document.getElementById('icuOccupied').value = 28;
-    renderICUGrid(40, 28);
+    const total = parseInt(localStorage.getItem('vigilai_icu_total')) || 40;
+    const occ   = parseInt(localStorage.getItem('vigilai_icu_occ')) || 28;
+    const avail = Math.max(0, total - occ);
+    document.getElementById('icuAvailBig').textContent = avail;
+    document.getElementById('icuTotal').value    = total;
+    document.getElementById('icuOccupied').value = occ;
+    renderICUGrid(total, occ);
   }
 }
 
@@ -542,8 +558,10 @@ function renderICUGrid(total, occ) {
 }
 
 async function updateICU() {
-  const total = parseInt(document.getElementById('icuTotal').value);
-  const occ   = parseInt(document.getElementById('icuOccupied').value);
+  const total = parseInt(document.getElementById('icuTotal').value) || 0;
+  const occ   = parseInt(document.getElementById('icuOccupied').value) || 0;
+  localStorage.setItem('vigilai_icu_total', total);
+  localStorage.setItem('vigilai_icu_occ', occ);
   try {
     await authFetch(`${API}/api/hospital/icu/beds?hospitalId=${hospitalId}`, {
       method:'PUT', body: JSON.stringify({ totalIcuBeds: total, occupiedBeds: occ })
