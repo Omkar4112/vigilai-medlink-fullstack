@@ -8,9 +8,11 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:OMKAR@111}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 30000
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+      idle-timeout: 300000
+      max-lifetime: 600000
 
   jpa:
     hibernate:

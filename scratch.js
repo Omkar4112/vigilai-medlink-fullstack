@@ -1,32 +1,40 @@
 const API = "https://backend-ysf3.onrender.com";
 
-async function test() {
-  const loginRes = await fetch(`${API}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'admin@vigilai.health', password: 'Admin@123' })
+async function debug() {
+  // Check clinic login
+  const clinicRes = await fetch(`${API}/auth/login`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({email:'clinic@vigilai.health', password:'Admin@123'})
   });
-  const loginData = await loginRes.json();
-  const token = loginData.token;
+  console.log("Clinic status:", clinicRes.status);
+  const clinicText = await clinicRes.text();
+  console.log("Clinic body:", clinicText);
 
-  console.log("Sending repair request...");
-  
-  while (true) {
-    try {
-      const res = await fetch(`${API}/api/admin/audit/repair`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-         console.log("REPAIRED SUCCESSFULLY:", await res.text());
-         break;
-      } else {
-         console.log("Failed:", res.status);
-      }
-    } catch (e) {
-      console.error("Fetch error:", e.message);
-    }
-    await new Promise(r => setTimeout(r, 10000));
-  }
+  // Check hospital login
+  const hospRes = await fetch(`${API}/auth/login`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({email:'hospital@vigilai.health', password:'Admin@123'})
+  });
+  console.log("\nHospital status:", hospRes.status);
+  const hospText = await hospRes.text();
+  console.log("Hospital body:", hospText);
+
+  // Check clinic login with Clinic@123
+  const clinicRes2 = await fetch(`${API}/auth/login`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({email:'clinic@vigilai.health', password:'Clinic@123'})
+  });
+  console.log("\nClinic with Clinic@123:", clinicRes2.status);
+  const clinicText2 = await clinicRes2.text();
+  console.log("Body:", clinicText2);
+
+  // Check hospital with Hospital@123
+  const hospRes2 = await fetch(`${API}/auth/login`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({email:'hospital@vigilai.health', password:'Hospital@123'})
+  });
+  console.log("\nHospital with Hospital@123:", hospRes2.status);
+  const hospText2 = await hospRes2.text();
+  console.log("Body:", hospText2);
 }
-test();
+debug();

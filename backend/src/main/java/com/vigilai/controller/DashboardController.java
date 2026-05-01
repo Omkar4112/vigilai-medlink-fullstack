@@ -29,6 +29,7 @@ public class DashboardController {
 
     @GetMapping("/summary")
     @PreAuthorize("isAuthenticated()")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<?> summary() {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         Map<String, Object> data = new LinkedHashMap<>();

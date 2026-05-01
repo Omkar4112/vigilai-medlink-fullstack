@@ -81,10 +81,12 @@ class HospitalController {
     private final AuditLogService    auditLog;
 
     @GetMapping("/dashboard")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<?> dashboard(@RequestParam Long hospitalId) {
         Hospital h = hospitalRepo.findById(hospitalId).orElse(null);
 
-        List<Doctor> onDuty     = doctorRepo.findByHospitalIdAndIsAvailableTrue(hospitalId);
+        List<Doctor> allDoctors = doctorRepo.findByHospitalId(hospitalId);
+        long onDutyCount = allDoctors.stream().filter(d -> Boolean.TRUE.equals(d.getIsAvailable())).count();
         List<Alert>  dispatched = alertRepo.findByHospitalIdOrderByAlertTimestampDesc(hospitalId);
         List<Alert>  pending    = alertRepo.findByClinicianDecisionOrderByAlertTimestampDesc("PENDING");
         int total = h != null && h.getTotalIcuBeds() != null ? h.getTotalIcuBeds() : 0;
@@ -95,14 +97,13 @@ class HospitalController {
         java.time.LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
         long dispatchedToday = alertRepo.countDispatchedSince(startOfDay);
 
-        // Use LinkedHashMap to avoid Map.of() 10-key limit
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("hospital",         h != null ? h : Map.of("name", "Unknown Hospital", "code", "UNK"));
         resp.put("icuAvailable",     avail);
         resp.put("icuTotal",         total);
         resp.put("icuOccupied",      occ);
-        resp.put("totalDoctors",     doctorRepo.findByHospitalId(hospitalId).size());
-        resp.put("availableDoctors", onDuty.size());
+        resp.put("totalDoctors",     allDoctors.size());
+        resp.put("availableDoctors", onDutyCount);
         resp.put("pendingAlerts",    pending.size());
         resp.put("dispatchedAlerts", dispatchedToday);
         resp.put("approvedAlerts",   approved.size());
@@ -175,10 +176,10 @@ class AdminController {
     private final PatientRepository  patientRepo;
     private final DoctorRepository   doctorRepo;
     private final AuditLogService    auditLog;
-    private final com.vigilai.repository.AuditLogRepository auditRepo;
 
     @GetMapping({"/dashboard/summary", "/dashboard"})
     @PreAuthorize("hasRole('ADMIN')")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<?> adminDashboard() {
         Map<String, Object> resp = new LinkedHashMap<>();
 
@@ -191,11 +192,9 @@ class AdminController {
         long pendingAlerts  = alertRepo.countByClinicianDecision("PENDING");
         long docsOnDuty     = doctorRepo.countByIsAvailableTrue();
 
-        // Dispatched today — approved alerts since midnight
         java.time.LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
         long dispatchedToday = alertRepo.countDispatchedSince(startOfDay);
 
-        // ICU aggregates across all hospitals
         Integer icuTotal    = hospitalRepo.sumTotalIcuBeds();
         Integer icuOccupied = hospitalRepo.sumOccupiedBeds();
         int icuAvailable    = (icuTotal != null ? icuTotal : 0) - (icuOccupied != null ? icuOccupied : 0);
@@ -267,18 +266,7 @@ class AdminController {
         ));
     }
 
-    @PostMapping("/audit/repair")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> repairAudit() {
-        // Delete the concurrent duplicates (forks) that broke the chain
-        java.util.List<Long> badIds = java.util.List.of(34L, 35L, 36L, 37L, 38L, 39L, 40L, 41L);
-        for (Long id : badIds) {
-            try {
-                auditRepo.deleteById(id);
-            } catch (Exception e) {}
-        }
-        return ResponseEntity.ok("Repaired");
-    }
+
 }
 
 // ── Health ────────────────────────────────────────────────────────────────

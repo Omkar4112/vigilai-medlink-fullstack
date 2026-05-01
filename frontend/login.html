@@ -428,13 +428,32 @@ function showError(msg) {
   el.classList.add('show');
 }
 
-// Check API health
+// Pre-warm backend (fires immediately on page load — wakes Render before user types)
 (async () => {
+  const statusEl = document.getElementById('apiStatus');
+  statusEl.textContent = 'WAKING UP…';
+  const t0 = Date.now();
+  const ticker = setInterval(() => {
+    const elapsed = Math.round((Date.now() - t0) / 1000);
+    if (elapsed > 3) statusEl.textContent = `WAKING UP… ${elapsed}s`;
+  }, 1000);
   try {
-    const r = await fetch(`${API}/health`, { signal: AbortSignal.timeout(3000) });
-    document.getElementById('apiStatus').textContent = r.ok ? 'ONLINE' : 'DEGRADED';
+    const r = await fetch(`${API}/health`);
+    clearInterval(ticker);
+    if (r.ok) {
+      statusEl.textContent = 'ONLINE';
+      statusEl.style.color = '#00ff88';
+      // Pre-warm DB connection pool + BCrypt by hitting auth (will 401 but warms everything)
+      fetch(`${API}/auth/login`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({email:'warmup@x.x', password:'x'})
+      }).catch(() => {});
+    } else {
+      statusEl.textContent = 'DEGRADED';
+    }
   } catch {
-    document.getElementById('apiStatus').textContent = 'OFFLINE (demo)';
+    clearInterval(ticker);
+    statusEl.textContent = 'OFFLINE (demo)';
   }
 })();
 </script>
