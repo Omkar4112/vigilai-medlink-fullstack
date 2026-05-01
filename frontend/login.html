@@ -369,6 +369,12 @@ async function login() {
   btn.classList.add('loading');
   errEl.classList.remove('show');
 
+  const wakeupTimer = setTimeout(() => {
+    if (btn.classList.contains('loading')) {
+      btn.textContent = 'Waking up Free Tier Server (takes ~50s)…';
+    }
+  }, 3000);
+
   try {
     const res = await fetch(`${API}/auth/login`, {
       method: 'POST',
@@ -410,6 +416,7 @@ async function login() {
       window.location.href = r[selectedRole];
     }, 800);
   } finally {
+    clearTimeout(wakeupTimer);
     btn.textContent = 'Sign In →';
     btn.classList.remove('loading');
   }

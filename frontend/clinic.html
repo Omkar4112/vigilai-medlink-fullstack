@@ -500,6 +500,12 @@ async function submitVitals() {
   btn.textContent = '⏳ Analysing…';
   btn.disabled    = true;
 
+  const wakeupTimer = setTimeout(() => {
+    if (btn.disabled) {
+      btn.textContent = '⏳ Waking up AI Model on Free Tier (takes ~50s)…';
+    }
+  }, 3000);
+
   try {
     const res  = await authFetch(`${API}/api/clinic/vitals`, { method:'POST', body: JSON.stringify(payload) });
     const data = await res.json();
@@ -527,6 +533,7 @@ async function submitVitals() {
     updateQueueBadge();
     showOfflineResult();
   } finally {
+    clearTimeout(wakeupTimer);
     btn.textContent = '🔍 Analyse & Submit';
     btn.disabled    = false;
   }
