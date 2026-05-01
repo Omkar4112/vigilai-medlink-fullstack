@@ -175,6 +175,7 @@ class AdminController {
     private final PatientRepository  patientRepo;
     private final DoctorRepository   doctorRepo;
     private final AuditLogService    auditLog;
+    private final com.vigilai.repository.AuditLogRepository auditRepo;
 
     @GetMapping({"/dashboard/summary", "/dashboard"})
     @PreAuthorize("hasRole('ADMIN')")
