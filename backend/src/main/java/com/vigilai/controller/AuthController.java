@@ -41,6 +41,15 @@ public class AuthController {
         }
 
         user.setLastLogin(LocalDateTime.now());
+
+        // Auto-assign entityId if missing (fixes null clinicId/hospitalId in frontend)
+        if (user.getEntityId() == null || user.getEntityId().isBlank()) {
+            switch (user.getRole()) {
+                case CLINIC   -> user.setEntityId("clinic-demo-001");
+                case HOSPITAL -> user.setEntityId("1");
+                default -> {} // ADMIN doesn't need entityId
+            }
+        }
         userRepo.save(user);
 
         String token = jwtUtil.generateToken(

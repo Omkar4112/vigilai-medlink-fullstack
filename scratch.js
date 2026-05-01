@@ -1,40 +1,40 @@
 const API = "https://backend-ysf3.onrender.com";
 
 async function debug() {
-  // Check clinic login
-  const clinicRes = await fetch(`${API}/auth/login`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({email:'clinic@vigilai.health', password:'Admin@123'})
-  });
-  console.log("Clinic status:", clinicRes.status);
-  const clinicText = await clinicRes.text();
-  console.log("Clinic body:", clinicText);
+  const adminLogin = await fetch(`${API}/auth/login`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({email:'admin@vigilai.health', password:'Admin@123'})
+  }).then(r => r.json());
 
-  // Check hospital login
-  const hospRes = await fetch(`${API}/auth/login`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({email:'hospital@vigilai.health', password:'Admin@123'})
-  });
-  console.log("\nHospital status:", hospRes.status);
-  const hospText = await hospRes.text();
-  console.log("Hospital body:", hospText);
+  // Get all users to see their entityIds
+  const users = await fetch(`${API}/api/admin/users`, {
+    headers:{'Authorization':`Bearer ${adminLogin.token}`}
+  }).then(r => r.json());
 
-  // Check clinic login with Clinic@123
-  const clinicRes2 = await fetch(`${API}/auth/login`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
+  users.forEach(u => {
+    console.log(`${u.email} | role=${u.role} | entityId=${u.entityId} | active=${u.isActive}`);
+  });
+
+  // Now try vitals with hardcoded clinicId
+  const clinicLogin = await fetch(`${API}/auth/login`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({email:'clinic@vigilai.health', password:'Clinic@123'})
-  });
-  console.log("\nClinic with Clinic@123:", clinicRes2.status);
-  const clinicText2 = await clinicRes2.text();
-  console.log("Body:", clinicText2);
+  }).then(r => r.json());
 
-  // Check hospital with Hospital@123
-  const hospRes2 = await fetch(`${API}/auth/login`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({email:'hospital@vigilai.health', password:'Hospital@123'})
+  console.log("\nFull clinic login response:", JSON.stringify(clinicLogin, null, 2));
+  
+  // Try submitting vitals with a known clinicId
+  const res = await fetch(`${API}/api/clinic/vitals`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${clinicLogin.token}`},
+    body: JSON.stringify({
+      clinicId: 'clinic-demo-001', phoneNumber:'+919876543210',
+      fullName:'Ramesh Patil', age:45, gender:'M',
+      heart_rate:72, spo2:98, respiratory_rate:16,
+      systolic_bp:120, diastolic_bp:80, temperature:36.8
+    })
   });
-  console.log("\nHospital with Hospital@123:", hospRes2.status);
-  const hospText2 = await hospRes2.text();
-  console.log("Body:", hospText2);
+  console.log("\nVitals status:", res.status);
+  console.log("Vitals body:", await res.text());
 }
 debug();
