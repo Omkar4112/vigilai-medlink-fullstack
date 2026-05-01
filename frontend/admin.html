@@ -676,9 +676,17 @@ function authFetch(url,opts={}){ return fetch(url,{...opts,headers:{'Content-Typ
 function logout(){ localStorage.clear(); window.location.href='login.html'; }
 function demoHospitals(){ return [{name:'Bangalore Medical College & RI',code:'BMCRI',icuFree:12},{name:'Manipal Hospital Whitefield',code:'MHW',icuFree:15},{name:'St. Johns Medical College',code:'SJMC',icuFree:7},{name:'Mysore Medical College',code:'MMC',icuFree:8}]; }
 
-loadDashboard();
 updateEntityPlaceholder();
-setInterval(loadDashboard, 15000); // Auto-refresh every 15s
+async function pollDashboard() {
+  await loadDashboard();
+  setTimeout(pollDashboard, 15000);
+}
+
+// Initial loads
+loadDashboard().then(() => setTimeout(pollDashboard, 15000));
+loadUsers();
+loadHospitals();
+loadDocs();
 </script>
 </body>
 </html>

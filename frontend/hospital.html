@@ -707,11 +707,20 @@ function demoDoctors() {
 }
 
 // Init
-loadDashboard();
-loadAlerts();
+async function pollAlerts() {
+  await loadAlerts();
+  setTimeout(pollAlerts, 30000);
+}
+async function pollDashboard() {
+  await loadDashboard();
+  setTimeout(pollDashboard, 10000);
+}
+
+// Initial loads
+loadAlerts().then(() => setTimeout(pollAlerts, 30000));
+loadDashboard().then(() => setTimeout(pollDashboard, 10000));
+loadDoctors();
 connectWebSocket();
-setInterval(loadAlerts,    30000); // poll alerts every 30s
-setInterval(loadDashboard, 10000); // refresh stats every 10s
 </script>
 </body>
 </html>
