@@ -84,8 +84,8 @@ class HospitalController {
     public ResponseEntity<?> dashboard(@RequestParam Long hospitalId) {
         Hospital h = hospitalRepo.findById(hospitalId).orElse(null);
 
-        List<Doctor> onDuty     = h != null ? doctorRepo.findByHospitalIdAndIsAvailableTrue(hospitalId) : List.of();
-        List<Alert>  dispatched = h != null ? alertRepo.findByHospitalIdOrderByAlertTimestampDesc(hospitalId) : List.of();
+        List<Doctor> onDuty     = doctorRepo.findByHospitalIdAndIsAvailableTrue(hospitalId);
+        List<Alert>  dispatched = alertRepo.findByHospitalIdOrderByAlertTimestampDesc(hospitalId);
         List<Alert>  pending    = alertRepo.findByClinicianDecisionOrderByAlertTimestampDesc("PENDING");
         int total = h != null && h.getTotalIcuBeds() != null ? h.getTotalIcuBeds() : 0;
         int occ   = h != null && h.getOccupiedBeds() != null ? h.getOccupiedBeds() : 0;
@@ -101,7 +101,7 @@ class HospitalController {
         resp.put("icuAvailable",     avail);
         resp.put("icuTotal",         total);
         resp.put("icuOccupied",      occ);
-        resp.put("totalDoctors",     h != null ? doctorRepo.findByHospitalId(hospitalId).size() : 0);
+        resp.put("totalDoctors",     doctorRepo.findByHospitalId(hospitalId).size());
         resp.put("availableDoctors", onDuty.size());
         resp.put("pendingAlerts",    pending.size());
         resp.put("dispatchedAlerts", dispatchedToday);
