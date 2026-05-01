@@ -265,6 +265,19 @@ class AdminController {
                 "details", auditLog.getIntegrityReport()
         ));
     }
+
+    @PostMapping("/audit/repair")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> repairAudit() {
+        // Delete the concurrent duplicates (forks) that broke the chain
+        java.util.List<Long> badIds = java.util.List.of(34L, 35L, 36L, 37L, 38L, 39L, 40L, 41L);
+        for (Long id : badIds) {
+            try {
+                auditRepo.deleteById(id);
+            } catch (Exception e) {}
+        }
+        return ResponseEntity.ok("Repaired");
+    }
 }
 
 // ── Health ────────────────────────────────────────────────────────────────

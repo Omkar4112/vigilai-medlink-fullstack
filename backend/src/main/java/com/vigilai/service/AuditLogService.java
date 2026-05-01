@@ -24,7 +24,7 @@ public class AuditLogService {
 
     @Autowired private AuditLogRepository auditRepo;
 
-    public void logAction(String action, String entityType, String entityId,
+    public synchronized void logAction(String action, String entityType, String entityId,
                           String userId, Object oldValue, Object newValue) {
         try {
             String hashPrev = auditRepo.findLatest()

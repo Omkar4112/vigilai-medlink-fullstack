@@ -9,15 +9,17 @@ async function test() {
   const loginData = await loginRes.json();
   const token = loginData.token;
 
-  const res = await fetch(`${API}/api/admin/audit`, {
+  const res = await fetch(`${API}/api/admin/audit?page=0&size=50`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   
-  if (!res.ok) {
-    console.log("Audit failed:", res.status);
-    console.log(await res.text());
-  } else {
-    console.log("Audit OK:", await res.json());
-  }
+  const data = await res.json();
+  const logs = data.content;
+  
+  logs.forEach(l => {
+    if (l.logId >= 33) {
+      console.log(`Log ${l.logId}: curr=${l.hashCurrent.substring(0,8)} prev=${l.hashPrevious.substring(0,8)} action=${l.action}`);
+    }
+  });
 }
 test();
