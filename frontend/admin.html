@@ -634,7 +634,7 @@ async function loadAudit() {
     const res  = await authFetch(`${API}/api/admin/audit?page=${page}&size=20`);
     const data = await res.json();
     const logs  = data.content || [];
-    document.getElementById('statAudit').textContent = data.totalElements || '—';
+    const statAudit = document.getElementById('statAudit'); if (statAudit) statAudit.textContent = data.totalElements || '—';
     document.getElementById('auditTbody').innerHTML = logs.map(l => `
       <tr class="audit-row">
         <td style="font-family:var(--mono)">#${l.logId}</td>
@@ -662,7 +662,7 @@ async function verifyIntegrity() {
         <div class="integrity-icon">${ok?'🛡️':'⚠️'}</div>
         <div class="integrity-text">
           <div class="title" style="color:${ok?'var(--accent2)':'var(--red)'}">${ok?'CHAIN INTACT':'BREACH DETECTED'}</div>
-          <div class="sub">${ok?'All SHA-256 hashes verified — no tampering detected':'Hash chain broken — audit log may have been tampered with'}</div>
+          <div class="sub">${ok?'All SHA-256 hashes verified — no tampering detected':'Hash chain broken — audit log may have been tampered with<br><br><strong style="font-size:10px;color:var(--red)">' + (data.details || '') + '</strong>'}</div>
           <div class="sub" style="margin-top:4px">Status: ${data.status} | Checked: ${new Date().toLocaleString()}</div>
         </div>
       </div>`;

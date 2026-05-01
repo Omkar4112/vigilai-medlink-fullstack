@@ -51,21 +51,34 @@ public class AuditLogService {
         }
     }
 
+    private String lastIntegrityReport = "OK";
+
+    public String getIntegrityReport() {
+        return lastIntegrityReport;
+    }
+
     public boolean verifyIntegrity() {
         List<AuditLogEntry> entries = auditRepo.findAllOrdered();
         if (entries.isEmpty()) return true;
         String prev = "GENESIS";
         for (AuditLogEntry e : entries) {
             if (e.getHashPrevious() != null && !e.getHashPrevious().equals(prev)) {
+                lastIntegrityReport = "AUDIT BREACH: Hash chain broken at log_id=" + e.getLogId() + " (Expected previous: " + prev + ", Found: " + e.getHashPrevious() + ")";
                 log.error("AUDIT BREACH at log_id={}", e.getLogId()); return false;
             }
             try {
-                if (!sha256(e).equals(e.getHashCurrent())) {
+                String computed = sha256(e);
+                if (!computed.equals(e.getHashCurrent())) {
+                    lastIntegrityReport = "HASH MISMATCH at log_id=" + e.getLogId() + " (Computed: " + computed + ", Stored: " + e.getHashCurrent() + ")";
                     log.error("HASH MISMATCH at log_id={}", e.getLogId()); return false;
                 }
-            } catch (Exception ex) { return false; }
+            } catch (Exception ex) { 
+                lastIntegrityReport = "ERROR at log_id=" + e.getLogId() + ": " + ex.getMessage();
+                return false; 
+            }
             prev = e.getHashCurrent();
         }
+        lastIntegrityReport = "OK";
         return true;
     }
 

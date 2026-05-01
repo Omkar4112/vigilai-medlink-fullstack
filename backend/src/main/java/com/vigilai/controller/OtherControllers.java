@@ -261,7 +261,8 @@ class AdminController {
         boolean intact = auditLog.verifyIntegrity();
         return ResponseEntity.ok(Map.of(
                 "integrityVerified", intact,
-                "status", intact ? "CHAIN_INTACT" : "BREACH_DETECTED"
+                "status", intact ? "CHAIN_INTACT" : "BREACH_DETECTED",
+                "details", auditLog.getIntegrityReport()
         ));
     }
 }
