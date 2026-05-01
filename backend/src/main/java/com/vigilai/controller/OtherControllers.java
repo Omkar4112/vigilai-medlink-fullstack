@@ -219,6 +219,8 @@ class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createHospital(@RequestBody Hospital hospital) {
         if (hospital.getCode() == null) hospital.setCode("HOSP-" + System.currentTimeMillis() % 10000);
+        if (hospital.getLatitude() == null) hospital.setLatitude(java.math.BigDecimal.ZERO);
+        if (hospital.getLongitude() == null) hospital.setLongitude(java.math.BigDecimal.ZERO);
         Hospital saved = hospitalRepo.save(hospital);
         auditLog.logAction("HOSPITAL_REGISTERED", "ADMIN", String.valueOf(saved.getHospitalId()), "ADMIN_USER", null, saved.getName());
         return ResponseEntity.ok(saved);

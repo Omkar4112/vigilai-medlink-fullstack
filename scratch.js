@@ -9,15 +9,14 @@ async function test() {
   const loginData = await loginRes.json();
   const token = loginData.token;
 
-  const sumRes = await fetch(`${API}/api/dashboard/summary`, {
+  const res = await fetch(`${API}/api/hospital/dashboard?hospitalId=1`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   
-  if (!sumRes.ok) {
-    console.log("Summary failed:", sumRes.status);
-    console.log(await sumRes.text());
+  if (!res.ok) {
+    console.log("Dashboard failed:", res.status);
   } else {
-    console.log("Summary OK:", await sumRes.json());
+    console.log("Dashboard OK:", await res.json());
   }
 }
 test();
