@@ -287,6 +287,10 @@ tr[onclick]:hover td { background: rgba(0,212,255,0.05) !important; }
           🔍 Analyse & Submit
         </button>
 
+        <div class="info-msg" id="infoMsgClinic" style="background: rgba(255, 199, 0, 0.1); border: 1px solid rgba(255, 199, 0, 0.3); color: #ffc700; border-radius: 8px; padding: 12px 16px; font-size: 11px; margin-top: 16px; display: none; line-height: 1.5; font-family: var(--sans);">
+          <b>Model Waking Up:</b> Since we are on a free hosting tier, the AI model may take up to 50 seconds to process the very first request. Please be patient! ⏳
+        </div>
+
         <div class="ai-result" id="aiResult">
           <div class="level" id="riskLevel">—</div>
           <div class="score" id="riskScore">—</div>
@@ -503,6 +507,8 @@ async function submitVitals() {
   const wakeupTimer = setTimeout(() => {
     if (btn.disabled) {
       btn.textContent = '⏳ Waking up AI Model on Free Tier (takes ~50s)…';
+      const infoMsg = document.getElementById('infoMsgClinic');
+      if (infoMsg) infoMsg.style.display = 'block';
     }
   }, 3000);
 
@@ -536,6 +542,8 @@ async function submitVitals() {
     clearTimeout(wakeupTimer);
     btn.textContent = '🔍 Analyse & Submit';
     btn.disabled    = false;
+    const infoMsg = document.getElementById('infoMsgClinic');
+    if (infoMsg) infoMsg.style.display = 'none';
   }
 }
 
