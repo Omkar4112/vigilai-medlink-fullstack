@@ -622,19 +622,71 @@ async function viewPatient(id) {
     const res = await authFetch(`${API}/api/clinic/patients/${id}`);
     const data = await res.json();
     const p = data.patient;
+    const vitals = data.vitals || [];
+    const alerts = data.alerts || [];
+    
+    let criticalCount = 0, highCount = 0, mediumCount = 0, lowCount = 0;
+    let approvedCount = 0, holdCount = 0, pendingCount = 0;
+    let emergencyTypes = new Set();
+    
+    alerts.forEach(a => {
+      const risk = a.riskLevel || a.severity;
+      if (risk === 'CRITICAL') criticalCount++;
+      else if (risk === 'HIGH') highCount++;
+      else if (risk === 'MEDIUM') mediumCount++;
+      else if (risk === 'LOW' || risk === 'NORMAL') lowCount++;
+      
+      if (a.clinicianDecision === 'APPROVED') approvedCount++;
+      else if (a.clinicianDecision === 'HOLD') holdCount++;
+      else pendingCount++;
+      
+      if (a.emergencyType) emergencyTypes.add(a.emergencyType);
+    });
+
+    const diseases = Array.from(emergencyTypes).join(', ');
     
     document.getElementById('modalName').textContent = p.fullName || 'Patient Details';
     document.getElementById('modalBody').innerHTML = `
-      <div style="margin-bottom:16px">
-        <p><b>Patient ID:</b> #${p.patientId}</p>
-        <p><b>Age/Gender:</b> ${p.age}y / ${p.gender || '—'}</p>
-        <p><b>Phone:</b> ${p.phoneNumber}</p>
-        <p><b>Age Group:</b> <span class="age-badge age-${ageClass(p.age)}">${data.ageGroup}</span></p>
+      <div style="display:flex; gap:16px; margin-bottom:16px;">
+        <div style="flex:1;">
+          <p><b>Patient ID:</b> #${p.patientId}</p>
+          <p><b>Age/Gender:</b> ${p.age}y / ${p.gender || '—'}</p>
+          <p><b>Phone:</b> ${p.phoneNumber}</p>
+          <p><b>Age Group:</b> <span class="age-badge age-${ageClass(p.age)}">${data.ageGroup}</span></p>
+        </div>
+        <div style="flex:1; border-left:1px solid var(--border); padding-left:16px;">
+          <p><b>Vitals Records:</b> ${vitals.length}</p>
+          <p><b>Total Alerts:</b> ${alerts.length}</p>
+          <p><b>Last Visit:</b> ${vitals.length > 0 ? new Date(vitals[0].timestamp).toLocaleDateString() : '—'}</p>
+        </div>
       </div>
+      
       <div style="margin-bottom:16px">
-        <p><b>Medical History:</b></p>
-        <p style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; margin-top:4px; font-family:var(--mono); font-size:12px">${p.medicalHistory || 'No history recorded'}</p>
+        <p><b>Medical History & Diseases:</b></p>
+        <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; margin-top:4px; font-family:var(--mono); font-size:12px; max-height:80px; overflow-y:auto;">
+          ${p.medicalHistory ? p.medicalHistory + '<br>' : ''}
+          ${emergencyTypes.size > 0 ? '<span style="color:var(--accent)">Detected Types:</span> ' + diseases : ''}
+          ${!p.medicalHistory && emergencyTypes.size === 0 ? '<span style="color:var(--muted)">No history recorded</span>' : ''}
+        </div>
       </div>
+      
+      <div style="margin-bottom:16px">
+        <p><b>Risk & Triage Statistics:</b></p>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:6px; font-family:var(--mono); font-size:11px;">
+          <div style="background:var(--surface2); padding:10px; border-radius:8px; border:1px solid var(--border);">
+            <div style="color:var(--red); margin-bottom:4px">Critical Risk: <b>${criticalCount}</b></div>
+            <div style="color:var(--orange); margin-bottom:4px">High Risk: <b>${highCount}</b></div>
+            <div style="color:var(--yellow); margin-bottom:4px">Medium Risk: <b>${mediumCount}</b></div>
+            <div style="color:var(--green)">Low Risk: <b>${lowCount}</b></div>
+          </div>
+          <div style="background:var(--surface2); padding:10px; border-radius:8px; border:1px solid var(--border);">
+            <div style="color:var(--green); margin-bottom:4px">Approved/Dispatched: <b>${approvedCount}</b></div>
+            <div style="color:var(--yellow); margin-bottom:4px">On Hold: <b>${holdCount}</b></div>
+            <div style="color:var(--muted)">Pending Review: <b>${pendingCount}</b></div>
+          </div>
+        </div>
+      </div>
+      
       <p style="font-size:11px; color:var(--muted)">Registered on ${new Date(p.createdAt).toLocaleString()}</p>
     `;
     
