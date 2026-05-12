@@ -39,14 +39,26 @@ public class VitalController {
         if (req.getPatientId() != null) {
             patient = patientRepo.findById(req.getPatientId())
                     .orElseThrow(() -> new RuntimeException("Patient not found: " + req.getPatientId()));
+            if (req.getMedicalHistory() != null && !req.getMedicalHistory().isBlank()) {
+                patient.setMedicalHistory(req.getMedicalHistory());
+                patientRepo.save(patient);
+            }
         } else {
             patient = patientService.findOrCreate(
                     req.getClinicId(),
                     req.getPhoneNumber(),
                     req.getAge(),
                     req.getGender(),
-                    req.getFullName()
+                    req.getFullName(),
+                    req.getMedicalHistory()
             );
+        }
+
+        // 1.5 Auto-Detect Emergency Type if missing
+        String detectedEmergencyType = req.getEmergencyType();
+        if (detectedEmergencyType == null || detectedEmergencyType.isBlank() || "AUTO-DETECT".equalsIgnoreCase(detectedEmergencyType)) {
+            detectedEmergencyType = autoDetectEmergencyType(req);
+            req.setEmergencyType(detectedEmergencyType);
         }
 
         // 2. Save vital
@@ -60,7 +72,7 @@ public class VitalController {
                 .bloodPressureDiastolic(req.getDiastolic_bp())
                 .spo2((int) req.getSpo2())
                 .clinicalNotes(req.getClinicalNotes())
-                .emergencyType(req.getEmergencyType())
+                .emergencyType(detectedEmergencyType)
                 .vitalTimestamp(LocalDateTime.now())
                 .syncStatus("SYNCED")
                 .build();
@@ -161,6 +173,48 @@ public class VitalController {
     @PreAuthorize("hasAnyRole('CLINIC','ADMIN')")
     public ResponseEntity<?> getPatientVitals(@PathVariable Long patientId) {
         return ResponseEntity.ok(vitalRepo.findPatientHistory(patientId));
+    }
+
+    // ─────────────────────────────────────────────
+    // AUTO-DETECT EMERGENCY TYPE
+    // ─────────────────────────────────────────────
+    private String autoDetectEmergencyType(VitalRequest req) {
+        String notes = req.getClinicalNotes() != null ? req.getClinicalNotes().toLowerCase() : "";
+        String history = req.getMedicalHistory() != null ? req.getMedicalHistory().toLowerCase() : "";
+        String combined = notes + " " + history;
+
+        if (combined.contains("chest pain") || combined.contains("heart") || req.getHeart_rate() > 150) {
+            return "CARDIAC";
+        }
+        if (combined.contains("breath") || combined.contains("cough") || combined.contains("asthma") || req.getSpo2() < 88 || req.getRespiratory_rate() > 35) {
+            return "RESPIRATORY";
+        }
+        if (combined.contains("stroke") || combined.contains("paralysis") || combined.contains("speech") || combined.contains("face droop")) {
+            return "STROKE";
+        }
+        if (combined.contains("accident") || combined.contains("fall") || combined.contains("trauma") || combined.contains("bleed") || combined.contains("fracture")) {
+            return "TRAUMA";
+        }
+        if (combined.contains("sugar") || combined.contains("diabet") || combined.contains("hypoglycemia")) {
+            return "DIABETIC";
+        }
+        if (combined.contains("poison") || combined.contains("overdose") || combined.contains("ingest")) {
+            return "POISONING";
+        }
+        if (combined.contains("seizure") || combined.contains("convulsion") || combined.contains("epilep") || combined.contains("fit")) {
+            return "SEIZURE";
+        }
+        if (req.getTemperature() > 40.0 || combined.contains("heat stroke") || combined.contains("sunstroke")) {
+            return "HEAT_STROKE";
+        }
+        if (combined.contains("pregnant") || combined.contains("labor") || combined.contains("obstetric")) {
+            return "OBSTETRIC";
+        }
+        if (req.getTemperature() > 38.5 && req.getHeart_rate() > 90 && req.getRespiratory_rate() > 20) {
+            return "SEPSIS";
+        }
+
+        return "SEPSIS"; // Fallback to SEPSIS if auto-detect cannot determine, to match AI expectations
     }
 
     // ─────────────────────────────────────────────

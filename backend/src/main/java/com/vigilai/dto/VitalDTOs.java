@@ -12,6 +12,7 @@ public class VitalDTOs {
         public String fullName;
         public int    age;
         public String gender;
+        public String medicalHistory;
         public String emergencyType;
         public String clinicalNotes;
 

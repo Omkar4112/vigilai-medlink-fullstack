@@ -141,9 +141,7 @@ tr:hover td{background:rgba(200,255,0,.02)}
   <div class="sb-item" onclick="showSection('users')">
     <span class="icon">👥</span> Users
   </div>
-  <div class="sb-item" onclick="showSection('hospitals')">
-    <span class="icon">🏥</span> Hospitals
-  </div>
+  
   <div class="sb-section">Security</div>
   <div class="sb-item" onclick="showSection('audit')">
     <span class="icon">🔐</span> Audit Logs
@@ -279,43 +277,6 @@ tr:hover td{background:rgba(200,255,0,.02)}
     </div>
   </div>
 
-  <!-- Hospitals -->
-  <div id="section-hospitals" style="display:none">
-    <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px">
-      <div class="panel">
-        <div class="panel-header"><h3>➕ Register Hospital</h3></div>
-        <div class="field" style="margin-bottom:12px"><label>Hospital Name</label><input id="hName" placeholder="e.g. City General"></div>
-        <div class="field" style="margin-bottom:12px"><label>Location / Address</label><input id="hLoc" placeholder="e.g. Bangalore, KA"></div>
-        <div class="field" style="margin-bottom:12px"><label>Contact / Phone</label><input id="hContact" placeholder="+91 ..."></div>
-        <div class="form-row">
-          <div class="field"><label>Total ICU Beds</label><input type="number" id="hIcu" value="10"></div>
-          <div class="field"><label>Trauma Level</label>
-            <select id="hLevel">
-              <option value="false">General</option>
-              <option value="true">Level 1 Trauma</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn-primary" style="width:100%;margin-top:16px" onclick="registerHospital()">Register Facility</button>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">
-          <h3>🏥 Registered Facilities</h3>
-          <button class="btn-sm" onclick="loadHospitals()">↻ Refresh</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>ID</th><th>Hospital Name</th><th>Code</th><th>Location</th><th>ICU Capacity</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="hospitalTbody">
-              <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Loading hospitals…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Audit Logs -->
   <div id="section-audit" style="display:none">
     <div class="panel">
@@ -388,15 +349,15 @@ setInterval(() => {
 }, 1000);
 
 function showSection(name) {
-  ['overview','alerts','users','hospitals','audit','integrity'].forEach(s => {
+  ['overview','alerts','users','audit','integrity'].forEach(s => {
     document.getElementById(`section-${s}`).style.display = s === name ? 'block' : 'none';
   });
   document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
-  const idx = ['overview','alerts','users','hospitals','audit','integrity'].indexOf(name);
+  const idx = ['overview','alerts','users','audit','integrity'].indexOf(name);
   document.querySelectorAll('.sb-item')[idx]?.classList.add('active');
   if (name === 'alerts')    loadAllAlerts();
   if (name === 'users')     loadUsers();
-  if (name === 'hospitals') loadHospitals();
+
   if (name === 'audit')     loadAudit();
 }
 
@@ -607,7 +568,7 @@ async function registerHospital() {
       document.getElementById('hName').value = '';
       document.getElementById('hLoc').value = '';
       document.getElementById('hContact').value = '';
-      loadHospitals();
+      
       loadDashboard();
     }
   } catch (e) {
@@ -620,7 +581,7 @@ async function deleteHospital(id) {
   try {
     const res = await authFetch(`${API}/api/admin/hospitals/${id}`, { method: 'DELETE' });
     if (res.ok) {
-      loadHospitals();
+      
       loadDashboard();
     }
   } catch (e) {
@@ -685,7 +646,7 @@ async function pollDashboard() {
 // Initial loads
 loadDashboard().then(() => setTimeout(pollDashboard, 15000));
 loadUsers();
-loadHospitals();
+
 loadDocs();
 </script>
 </body>

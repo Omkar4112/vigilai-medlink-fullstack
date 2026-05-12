@@ -278,6 +278,10 @@ tr[onclick]:hover td { background: rgba(0,212,255,0.05) !important; }
           <div class="form-group"><label>Temperature (°C)</label><input type="number" id="temp" step="0.1" placeholder="36.8" min="28" max="45"></div>
 
           <div class="form-group full-width">
+            <label>Medical History</label>
+            <input type="text" id="medicalHistory" placeholder="Diabetes, Hypertension, etc.">
+          </div>
+          <div class="form-group full-width">
             <label>Clinical Notes</label>
             <input type="text" id="notes" placeholder="Observations, symptoms, history…">
           </div>
@@ -464,6 +468,7 @@ async function lookupPatient() {
       document.getElementById('fullName').value = p.fullName || '';
       document.getElementById('age').value      = p.age || '';
       document.getElementById('gender').value   = p.gender || '';
+      document.getElementById('medicalHistory').value = p.medicalHistory || '';
       updateAgeGroup();
       document.getElementById('patientCard').innerHTML = `
         <div style="color:var(--green);margin-bottom:12px;font-weight:600">✓ Patient found</div>
@@ -487,6 +492,7 @@ async function submitVitals() {
     fullName:         document.getElementById('fullName').value.trim(),
     age:              parseInt(document.getElementById('age').value) || 0,
     gender:           document.getElementById('gender').value,
+    medicalHistory:   document.getElementById('medicalHistory').value.trim(),
     emergencyType:    selectedEmergencyType || null,
     clinicalNotes:    document.getElementById('notes').value,
     heart_rate:       parseInt(document.getElementById('hr').value)    || 0,
@@ -527,6 +533,7 @@ async function submitVitals() {
       <div style="margin-bottom:6px"><b>Name:</b> ${payload.fullName || '—'}</div>
       <div style="margin-bottom:6px"><b>Age:</b> ${payload.age} (${data.ageGroup || 'ADULT'})</div>
       <div style="margin-bottom:6px"><b>Gender:</b> ${payload.gender || '—'}</div>
+      <div style="margin-bottom:6px"><b>History:</b> ${payload.medicalHistory || 'None'}</div>
     `;
     
     // Refresh stats to update total patients count
@@ -801,6 +808,7 @@ function fillFromPatient(id) {
   document.getElementById('fullName').value = p.fullName||'';
   document.getElementById('age').value      = p.age;
   document.getElementById('gender').value   = p.gender||'';
+  document.getElementById('medicalHistory').value = p.medicalHistory||'';
   updateAgeGroup();
   showSection('vitals');
 }

@@ -17,13 +17,21 @@ public class PatientService {
     @Autowired private VitalRepository   vitalRepo;
 
     public Patient findOrCreate(String clinicId, String phone, Integer age,
-                                 String gender, String fullName) {
+                                 String gender, String fullName, String medicalHistory) {
         return patientRepo.findByClinicIdAndPhoneNumber(clinicId, phone)
+                .map(p -> {
+                    if (medicalHistory != null && !medicalHistory.isBlank()) {
+                        p.setMedicalHistory(medicalHistory);
+                        patientRepo.save(p);
+                    }
+                    return p;
+                })
                 .orElseGet(() -> {
                     Patient p = Patient.builder()
                             .clinicId(clinicId).phoneNumber(phone)
                             .age(age != null ? age : 0)
-                            .gender(gender).fullName(fullName).build();
+                            .gender(gender).fullName(fullName)
+                            .medicalHistory(medicalHistory).build();
                     Patient saved = patientRepo.save(p);
                     log.info("New patient id={} clinic={}", saved.getPatientId(), clinicId);
                     return saved;
