@@ -242,16 +242,28 @@ tr:hover td{background:rgba(200,255,0,.02)}
   <!-- Users -->
   <div id="section-users" style="display:none">
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px">
-      <div class="panel">
-        <div class="panel-header">
+            <div class="panel">
+        <div class="panel-header" style="margin-bottom:8px">
           <h3>👥 System Users</h3>
           <button class="btn-sm" onclick="loadUsers()">↻ Refresh</button>
         </div>
+        
+        <h4 style="font-size:12px;color:var(--accent);margin-bottom:8px;margin-top:16px;border-bottom:1px solid var(--border);padding-bottom:4px">🏥 Clinics</h4>
         <table>
-          <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Entity ID</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody id="usersTbody">
-            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;font-family:var(--mono)">Loading…</td></tr>
-          </tbody>
+          <thead><tr><th>Email</th><th>Name</th><th>Entity ID</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="clinicUsersTbody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Loading...</td></tr></tbody>
+        </table>
+
+        <h4 style="font-size:12px;color:#4da6ff;margin-bottom:8px;margin-top:24px;border-bottom:1px solid var(--border);padding-bottom:4px">🏨 Hospitals</h4>
+        <table>
+          <thead><tr><th>Email</th><th>Name</th><th>Entity ID</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="hospitalUsersTbody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Loading...</td></tr></tbody>
+        </table>
+
+        <h4 style="font-size:12px;color:var(--yellow);margin-bottom:8px;margin-top:24px;border-bottom:1px solid var(--border);padding-bottom:4px">🛡️ System Admins</h4>
+        <table>
+          <thead><tr><th>Email</th><th>Name</th><th>Entity ID</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="adminUsersTbody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Loading...</td></tr></tbody>
         </table>
       </div>
       <div class="panel">
@@ -463,20 +475,27 @@ async function loadUsers() {
   try {
     const res  = await authFetch(`${API}/api/admin/users`);
     const data = await res.json();
-    document.getElementById('usersTbody').innerHTML = data.map(u => `
+    
+    const clinics = data.filter(u => u.role === 'CLINIC');
+    const hospitals = data.filter(u => u.role === 'HOSPITAL');
+    const admins = data.filter(u => u.role === 'ADMIN');
+
+    const renderRows = (users) => users.map(u => `
       <tr>
         <td style="font-family:var(--mono)">${u.email}</td>
         <td>${u.fullName||'—'}</td>
-        <td><span class="role-badge role-${u.role}">${u.role}</span></td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${u.entityId||'—'}</td>
         <td><span class="status-badge ${u.isActive?'sb-active':'sb-inactive'}">${u.isActive?'ACTIVE':'INACTIVE'}</span></td>
         <td><button class="btn-sm">Edit</button></td>
-      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">No users</td></tr>';
+      </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--muted);font-size:12px">No users in this category</td></tr>';
+
+    document.getElementById('clinicUsersTbody').innerHTML = renderRows(clinics);
+    document.getElementById('hospitalUsersTbody').innerHTML = renderRows(hospitals);
+    document.getElementById('adminUsersTbody').innerHTML = renderRows(admins);
   } catch {
-    document.getElementById('usersTbody').innerHTML = `
-      <tr><td style="font-family:var(--mono)">clinic@vigilai.health</td><td>Demo Clinic</td><td><span class="role-badge role-CLINIC">CLINIC</span></td><td style="font-family:var(--mono);font-size:11px">clinic-demo-001</td><td><span class="status-badge sb-active">ACTIVE</span></td><td><button class="btn-sm">Edit</button></td></tr>
-      <tr><td style="font-family:var(--mono)">hospital@vigilai.health</td><td>BMCRI Hospital</td><td><span class="role-badge role-HOSPITAL">HOSPITAL</span></td><td style="font-family:var(--mono);font-size:11px">1</td><td><span class="status-badge sb-active">ACTIVE</span></td><td><button class="btn-sm">Edit</button></td></tr>
-      <tr><td style="font-family:var(--mono)">admin@vigilai.health</td><td>System Admin</td><td><span class="role-badge role-ADMIN">ADMIN</span></td><td style="font-family:var(--mono);font-size:11px">—</td><td><span class="status-badge sb-active">ACTIVE</span></td><td><button class="btn-sm">Edit</button></td></tr>`;
+    document.getElementById('clinicUsersTbody').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--muted);font-size:12px">Demo Clinic</td></tr>`;
+    document.getElementById('hospitalUsersTbody').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--muted);font-size:12px">Demo Hospital</td></tr>`;
+    document.getElementById('adminUsersTbody').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--muted);font-size:12px">System Admin</td></tr>`;
   }
 }
 
