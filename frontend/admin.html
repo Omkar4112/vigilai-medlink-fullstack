@@ -405,31 +405,38 @@ function updateValue(id, val) {
 
 async function loadHospitalOverview() {
   try {
-    const res  = await authFetch(`${API}/api/admin/hospitals`);
+    const res  = await authFetch(`${API}/api/admin/users`);
     const data = await res.json();
-    document.getElementById('hospitalOverview').innerHTML = data.slice(0,4).map(h => `
+    const hospitals = data.filter(u => u.role === 'HOSPITAL');
+    
+    if (hospitals.length === 0) {
+      document.getElementById('hospitalOverview').innerHTML = '<div style="color:var(--muted);padding:16px;font-family:var(--mono);text-align:center">No hospitals registered yet. Create one in the Users tab.</div>';
+      return;
+    }
+
+    document.getElementById('hospitalOverview').innerHTML = hospitals.slice(0,4).map(h => `
       <div class="hospital-card">
         <div class="hospital-info">
-          <div class="name">${h.name}</div>
-          <div class="meta">${h.code} | ${h.isLevel1Trauma?'Level 1 Trauma':'General'}</div>
+          <div class="name">${h.fullName || h.email}</div>
+          <div class="meta">ID: ${h.entityId || 'N/A'} | Status: ${h.isActive ? 'ONLINE' : 'OFFLINE'}</div>
         </div>
         <div class="hospital-stats">
           <div class="hs-item">
-            <div class="val" style="color:var(--accent2)">${h.totalIcuBeds - h.occupiedBeds}</div>
-            <div class="lbl">ICU Free</div>
+            <div class="val" style="color:var(--accent2)">Active</div>
+            <div class="lbl">Account</div>
           </div>
           <div class="hs-item">
-            <div class="val" style="color:var(--muted2)">${h.sepsisMortalityRate}%</div>
-            <div class="lbl">Mortality</div>
+            <div class="val" style="color:var(--muted2)">${h.role}</div>
+            <div class="lbl">Type</div>
           </div>
         </div>
       </div>`).join('');
   } catch {
-    document.getElementById('hospitalOverview').innerHTML = demoHospitals().map(h => `
+    document.getElementById('hospitalOverview').innerHTML = `
       <div class="hospital-card">
-        <div class="hospital-info"><div class="name">${h.name}</div><div class="meta">${h.code}</div></div>
-        <div class="hospital-stats"><div class="hs-item"><div class="val" style="color:var(--accent2)">${h.icuFree}</div><div class="lbl">ICU Free</div></div></div>
-      </div>`).join('');
+        <div class="hospital-info"><div class="name">Demo Hospital</div><div class="meta">ID: 1</div></div>
+        <div class="hospital-stats"><div class="hs-item"><div class="val" style="color:var(--accent2)">Active</div><div class="lbl">Account</div></div></div>
+      </div>`;
   }
 }
 
