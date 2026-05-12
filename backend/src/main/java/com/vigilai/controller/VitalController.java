@@ -103,13 +103,15 @@ public class VitalController {
 
         boolean isHighRisk = "HIGH".equalsIgnoreCase(aiResp.getRisk_level())
                 || "CRITICAL".equalsIgnoreCase(aiResp.getRisk_level());
+        
+        boolean isMediumRisk = "MEDIUM".equalsIgnoreCase(aiResp.getRisk_level());
 
         String explanation = null;
         String treatmentRecs = null;
         String paramedicGuidance = null;
 
-        // 5. LLM (only if high risk)
-        if (isHighRisk) {
+        // 5. LLM
+        if (isHighRisk || isMediumRisk) {
             try {
                 LLMService.LLMResult llm = llmService.explain(req, aiResp, patient);
                 explanation = llm.getExplanation();
@@ -118,10 +120,19 @@ public class VitalController {
             } catch (Exception e) {
                 log.warn("LLM failed: {}", e.getMessage());
             }
+        } else {
+            // LOW RISK
+            if (aiResp.getTop_features() != null && aiResp.getTop_features().length > 0) {
+                explanation = "Vitals are mostly stable. Noted features: " + String.join(", ", aiResp.getTop_features());
+            } else {
+                explanation = "All vitals are within normal boundaries.";
+            }
+            treatmentRecs = "Standard outpatient care.";
+            paramedicGuidance = "Routine monitoring recommended. No immediate escalation needed.";
         }
 
         // 6. Create Alert
-        if (isHighRisk) {
+        if (isHighRisk || isMediumRisk) {
             Alert alert = Alert.builder()
                     .patient(patient)
                     .clinicId(vital.getClinicId())
@@ -148,7 +159,6 @@ public class VitalController {
                     .build();
 
             Alert saved = alertRepo.save(alert);
-
             wsService.pushAlert(saved);
 
             auditLog.logAction(
@@ -160,9 +170,7 @@ public class VitalController {
                     "risk=" + aiResp.getRisk_score()
             );
 
-            log.warn("🚨 ALERT #{} — {}",
-                    saved.getAlertId(),
-                    aiResp.getRisk_level());
+            log.warn("🚨 ALERT #{} — {}", saved.getAlertId(), aiResp.getRisk_level());
         }
 
         // 7. Response
@@ -174,13 +182,10 @@ public class VitalController {
         response.put("riskScore", aiResp.getRisk_score());
         response.put("triageSeverity", triage.getRuleSeverity());
         response.put("flagCount", triage.getFlagCount());
-        response.put("alertCreated", isHighRisk);
-
-        if (isHighRisk) {
-            response.put("explanation", explanation);
-            response.put("treatmentRecs", treatmentRecs);
-            response.put("paramedicGuidance", paramedicGuidance);
-        }
+        response.put("alertCreated", isHighRisk || isMediumRisk);
+        response.put("explanation", explanation);
+        response.put("treatmentRecs", treatmentRecs);
+        response.put("paramedicGuidance", paramedicGuidance);
 
         return ResponseEntity.ok(response);
     }
