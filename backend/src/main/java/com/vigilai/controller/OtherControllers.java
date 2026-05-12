@@ -78,6 +78,7 @@ class HospitalController {
     private final HospitalRepository hospitalRepo;
     private final DoctorRepository   doctorRepo;
     private final AlertRepository    alertRepo;
+    private final UserRepository     userRepo;
     private final AuditLogService    auditLog;
 
     @GetMapping("/dashboard")
@@ -98,7 +99,27 @@ class HospitalController {
         long dispatchedToday = alertRepo.countDispatchedSince(startOfDay);
 
         Map<String, Object> resp = new LinkedHashMap<>();
-        resp.put("hospital",         h != null ? h : Map.of("name", "Unknown Hospital", "code", "UNK"));
+        // Resolve hospital name: try hospitals table first, then fallback to users table
+        String hospitalName = "Hospital Dashboard";
+        String hospitalCode = "H-" + hospitalId;
+        if (h != null) {
+            hospitalName = h.getName();
+            hospitalCode = h.getCode() != null ? h.getCode() : hospitalCode;
+        } else {
+            // Lookup from users table by entityId
+            var users = userRepo.findAll();
+            for (var u : users) {
+                if (u.getRole() == com.vigilai.model.Role.HOSPITAL
+                        && u.getEntityId() != null
+                        && u.getEntityId().equals(String.valueOf(hospitalId))) {
+                    hospitalName = u.getFullName() != null ? u.getFullName() : u.getEmail();
+                    hospitalCode = "USR-" + hospitalId;
+                    break;
+                }
+            }
+        }
+
+        resp.put("hospital",         Map.of("name", hospitalName, "code", hospitalCode));
         resp.put("icuAvailable",     avail);
         resp.put("icuTotal",         total);
         resp.put("icuOccupied",      occ);

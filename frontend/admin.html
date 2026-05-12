@@ -555,65 +555,11 @@ function updateEntityPlaceholder() {
   }
 }
 
-async function loadHospitals() {
-  try {
-    const res  = await authFetch(`${API}/api/admin/hospitals`);
-    const data = await res.json();
-    const tbody = document.getElementById('hospitalTbody');
-    if (!data.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">No hospitals registered yet</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.map(h => `
-      <tr>
-        <td style="font-family:var(--mono)">#${h.hospitalId}</td>
-        <td style="font-weight:600">${h.name}</td>
-        <td style="font-family:var(--mono)">${h.code || '—'}</td>
-        <td style="font-size:12px;color:var(--muted2)">${h.location || '—'}</td>
-        <td style="font-family:var(--mono)">${(h.occupiedBeds || 0)}/${(h.totalIcuBeds || 0)} Beds</td>
-        <td><span class="status-badge sb-active">ONLINE</span></td>
-        <td><button class="btn-sm btn-danger" onclick="deleteHospital(${h.hospitalId})">Unregister</button></td>
-      </tr>`).join('');
-  } catch (e) {
-    console.error("Load hospitals failed", e);
-  }
-}
 
-async function registerHospital() {
-  const payload = {
-    name:           document.getElementById('hName').value.trim(),
-    location:       document.getElementById('hLoc').value.trim(),
-    contact:        document.getElementById('hContact').value.trim(),
-    totalIcuBeds:   parseInt(document.getElementById('hIcu').value) || 0,
-    isLevel1Trauma: document.getElementById('hLevel').value === 'true'
-  };
-  if (!payload.name) { alert('Hospital name is required'); return; }
-  try {
-    const res = await authFetch(`${API}/api/admin/hospitals`, { method:'POST', body: JSON.stringify(payload) });
-    if (res.ok) {
-      document.getElementById('hName').value = '';
-      document.getElementById('hLoc').value = '';
-      document.getElementById('hContact').value = '';
-      
-      loadDashboard();
-    }
-  } catch (e) {
-    alert('Registration failed');
-  }
-}
 
-async function deleteHospital(id) {
-  if (!confirm('Are you sure you want to unregister this hospital? This action cannot be undone.')) return;
-  try {
-    const res = await authFetch(`${API}/api/admin/hospitals/${id}`, { method: 'DELETE' });
-    if (res.ok) {
-      
-      loadDashboard();
-    }
-  } catch (e) {
-    alert('Deletion failed');
-  }
-}
+
+
+
 
 async function loadAudit() {
   const page = parseInt(document.getElementById('auditPage').value || 0);
