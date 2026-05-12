@@ -36,7 +36,7 @@ public class DashboardController {
 
         // Core counts
         data.put("totalUsers",      userRepo.count());
-        data.put("totalHospitals",  hospitalRepo.count());
+        data.put("totalHospitals",  userRepo.countByRole(com.vigilai.model.Role.HOSPITAL));
         data.put("totalPatients",   patientRepo.count());
         data.put("totalDoctors",    doctorRepo.count());
         data.put("totalAlerts",     alertRepo.count());
@@ -52,12 +52,10 @@ public class DashboardController {
         // Staff availability
         data.put("doctorsOnDuty",   doctorRepo.countByIsAvailableTrue());
 
-        // ICU capacity (sum across all hospitals)
-        Integer icuTotal    = hospitalRepo.sumTotalIcuBeds();
-        Integer icuOccupied = hospitalRepo.sumOccupiedBeds();
-        int icuAvail = (icuTotal != null ? icuTotal : 0) - (icuOccupied != null ? icuOccupied : 0);
-        data.put("icuAvailable",    Math.max(0, icuAvail));
-        data.put("icuTotal",        icuTotal != null ? icuTotal : 0);
+        // ICU capacity
+        // Since hospitals are now managed purely via users table, ICU capacity isn't tracked in a separate table anymore.
+        data.put("icuAvailable",    0);
+        data.put("icuTotal",        0);
 
         data.put("systemStatus",    "OPERATIONAL");
         data.put("lastUpdated",     LocalDateTime.now().toString());

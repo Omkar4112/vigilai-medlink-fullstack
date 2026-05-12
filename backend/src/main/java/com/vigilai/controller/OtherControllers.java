@@ -184,7 +184,7 @@ class AdminController {
         Map<String, Object> resp = new LinkedHashMap<>();
 
         long totalUsers     = userRepo.count();
-        long totalHospitals = hospitalRepo.count();
+        long totalHospitals = userRepo.countByRole(com.vigilai.model.Role.HOSPITAL);
         long totalPatients  = patientRepo.count();
         long totalDoctors   = doctorRepo.count();
         long totalAlerts    = alertRepo.count();
@@ -195,9 +195,7 @@ class AdminController {
         java.time.LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
         long dispatchedToday = alertRepo.countDispatchedSince(startOfDay);
 
-        Integer icuTotal    = hospitalRepo.sumTotalIcuBeds();
-        Integer icuOccupied = hospitalRepo.sumOccupiedBeds();
-        int icuAvailable    = (icuTotal != null ? icuTotal : 0) - (icuOccupied != null ? icuOccupied : 0);
+        int icuAvailable    = 0;
 
         resp.put("totalUsers",      totalUsers);
         resp.put("totalHospitals",  totalHospitals);
