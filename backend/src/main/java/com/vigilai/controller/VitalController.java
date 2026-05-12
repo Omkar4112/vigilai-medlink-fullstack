@@ -39,8 +39,24 @@ public class VitalController {
         if (req.getPatientId() != null) {
             patient = patientRepo.findById(req.getPatientId())
                     .orElseThrow(() -> new RuntimeException("Patient not found: " + req.getPatientId()));
+            boolean updated = false;
             if (req.getMedicalHistory() != null && !req.getMedicalHistory().isBlank()) {
                 patient.setMedicalHistory(req.getMedicalHistory());
+                updated = true;
+            }
+            if (req.getAge() > 0) {
+                patient.setAge(req.getAge());
+                updated = true;
+            }
+            if (req.getFullName() != null && !req.getFullName().isBlank()) {
+                patient.setFullName(req.getFullName());
+                updated = true;
+            }
+            if (req.getGender() != null && !req.getGender().isBlank()) {
+                patient.setGender(req.getGender());
+                updated = true;
+            }
+            if (updated) {
                 patientRepo.save(patient);
             }
         } else {

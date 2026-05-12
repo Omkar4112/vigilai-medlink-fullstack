@@ -20,8 +20,24 @@ public class PatientService {
                                  String gender, String fullName, String medicalHistory) {
         return patientRepo.findByClinicIdAndPhoneNumber(clinicId, phone)
                 .map(p -> {
+                    boolean updated = false;
                     if (medicalHistory != null && !medicalHistory.isBlank()) {
                         p.setMedicalHistory(medicalHistory);
+                        updated = true;
+                    }
+                    if (age != null && age > 0) {
+                        p.setAge(age);
+                        updated = true;
+                    }
+                    if (fullName != null && !fullName.isBlank()) {
+                        p.setFullName(fullName);
+                        updated = true;
+                    }
+                    if (gender != null && !gender.isBlank()) {
+                        p.setGender(gender);
+                        updated = true;
+                    }
+                    if (updated) {
                         patientRepo.save(p);
                     }
                     return p;
